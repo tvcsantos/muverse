@@ -1,13 +1,13 @@
 import * as core from '@actions/core';
 import { ProcessingModuleChange, ProcessedModuleChange, BumpType, ChangeReason, CommitInfo } from '../adapters/core.js';
 import { Config, getDependencyBumpType } from '../config/index.js';
-import { ModuleRegistry } from '../adapters/module-registry.js';
+import { ModuleRegistry } from './module-registry.js';
 import { calculateCascadeEffects } from '../graph/index.js';
 import { calculateBumpFromCommits } from '../utils/commits.js';
 import { bumpSemVer, bumpToPrerelease, formatSemVer, addBuildMetadata, generateTimestampPrereleaseId } from '../semver/index.js';
 import { getCurrentCommitShortSha } from '../git/index.js';
 import { SemVer } from 'semver';
-import { AdapterMetadata } from '../adapters/adapter-identifier.js';
+import { AdapterMetadata } from './adapter-identifier.js';
 import { applySnapshotSuffix } from '../utils/versioning.js';
 
 export type VersionBumperOptions = {
@@ -23,11 +23,13 @@ export type VersionBumperOptions = {
 
 export class VersionBumper {
 
-  constructor(private readonly options: VersionBumperOptions) {
+  constructor(
+    private readonly moduleRegistry: ModuleRegistry,
+    private readonly options: VersionBumperOptions,
+  ) {
   }
 
   async calculateVersionBumps(
-    hierarchyManager: ModuleRegistry,
     moduleCommits: Map<string, CommitInfo[]>,
     config: Config
   ): Promise<ProcessedModuleChange[]> {
@@ -48,12 +50,12 @@ export class VersionBumper {
     }
     
     // Step 1: Calculate initial bump types for all modules
-    const processingModuleChanges = this.calculateInitialBumps(hierarchyManager, moduleCommits, config);
-    
+    const processingModuleChanges = this.calculateInitialBumps(moduleCommits, config);
+
     // Step 2: Calculate cascade effects
     core.info('🌊 Calculating cascade effects...');
     const cascadedChanges = calculateCascadeEffects(
-      hierarchyManager,
+      this.moduleRegistry,
       processingModuleChanges,
       (dependencyBump: BumpType) => getDependencyBumpType(dependencyBump, config)
     );
@@ -64,13 +66,12 @@ export class VersionBumper {
   }
 
   private calculateInitialBumps(
-    hierarchyManager: ModuleRegistry,
     moduleCommits: Map<string, CommitInfo[]>,
     config: Config
   ): ProcessingModuleChange[] {
     const processingModuleChanges: ProcessingModuleChange[] = [];
     
-    for (const [projectId, projectInfo] of hierarchyManager.getModules()) {
+    for (const [projectId, projectInfo] of this.moduleRegistry.getModules()) {
       const commits = moduleCommits.get(projectId) || [];
       
       // Determine bump type from commits only

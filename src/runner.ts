@@ -1,10 +1,10 @@
 import * as core from '@actions/core';
-import { ModuleSystemFactory } from "./adapters/module-system-factory.js";
-import { ModuleRegistry } from './adapters/module-registry.js';
-import { VersionManager } from './adapters/version-manager.js';
+import { ModuleSystemFactory } from "./services/module-system-factory.js";
+import { ModuleRegistry } from './services/module-registry.js';
+import { VersionManager } from './services/version-manager.js';
 import { createModuleSystemFactory } from './factories/module-system-factory.js';
 import { Config } from './config/index.js';
-import { 
+import {
   isWorkingDirectoryClean
 } from './git/index.js';
 
@@ -15,9 +15,11 @@ import { VersionBumper, VersionBumperOptions } from './services/version-bumper.j
 import { VersionApplier, VersionApplierOptions, ModuleChangeResult } from './services/version-applier.js';
 import { ChangelogGenerator } from './services/changelog-generator.js';
 import { GitOperations, GitOperationsOptions } from './services/git-operations.js';
-import { AdapterMetadata } from './adapters/adapter-identifier.js';
-import { getAdapterMetadata } from './adapters/adapter-identifier-factory.js';
+import { AdapterMetadata } from './services/adapter-identifier.js';
 import { Module } from './adapters/core.js';
+import { AdapterMetadataProvider } from './services/adapter-metadata-provider.js';
+import { AdapterIdentifierRegistry } from './services/adapter-identifier-registry.js';
+import { createAdapterIdentifierRegistry } from './factories/adapter-identifier-registry.js';
 
 export type RunnerOptions = {
   readonly repoRoot: string;
@@ -45,7 +47,7 @@ export type RunnerResult = {
 
 export class VerseRunner {
   private moduleSystemFactory!: ModuleSystemFactory; // Will be initialized in run()
-  private hierarchyManager!: ModuleRegistry; // Will be initialized in run()
+  private moduleRegistry!: ModuleRegistry; // Will be initialized in run()
   private versionManager!: VersionManager; // Will be initialized in run()
   private config!: Config; // Will be initialized in run()
   private adapter!: AdapterMetadata; // Will be initialized in run()
@@ -58,10 +60,12 @@ export class VerseRunner {
   private versionApplier!: VersionApplier; // Will be initialized in run()
   private changelogGenerator: ChangelogGenerator;
   private gitOperations!: GitOperations; // Will be initialized in run()
+  private adapterIdentifierRegistry: AdapterIdentifierRegistry;
+  private adapterMetadataProvider: AdapterMetadataProvider;
 
   constructor(options: RunnerOptions) {
     this.options = options;
-    
+
     // Initialize services
     this.configurationLoader = new ConfigurationLoader();
     this.commitAnalyzer = new CommitAnalyzer(options.repoRoot);
@@ -70,19 +74,25 @@ export class VerseRunner {
       repoRoot: options.repoRoot,
       dryRun: options.dryRun
     });
+    this.adapterIdentifierRegistry = createAdapterIdentifierRegistry();
+    this.adapterMetadataProvider = new AdapterMetadataProvider(
+      this.adapterIdentifierRegistry, {
+      repoRoot: options.repoRoot,
+      adapter: options.adapter
+    });
   }
 
   async run(): Promise<RunnerResult> {
     core.info('🏃 Running VERSE semantic evolution pipeline...');
 
-    this.adapter = await getAdapterMetadata(this.options);
+    this.adapter = await this.adapterMetadataProvider.getMetadata();
 
     // Initialize module system factory with resolved adapter
     this.moduleSystemFactory = createModuleSystemFactory(this.adapter.id, this.options.repoRoot);
-    
+
     // Load configuration
     this.config = await this.configurationLoader.loadConfiguration(
-      this.options.configPath, 
+      this.options.configPath,
       this.options.repoRoot
     );
 
@@ -94,19 +104,19 @@ export class VerseRunner {
     // Discover modules and get hierarchy manager
     core.info('🔍 Discovering modules...');
     const detector = this.moduleSystemFactory.createDetector();
-    this.hierarchyManager = await detector.detect();
-    
+    this.moduleRegistry = await detector.detect();
+
     // Create version manager  
     const versionUpdateStrategy = this.moduleSystemFactory.createVersionUpdateStrategy();
-    this.versionManager = new VersionManager(this.hierarchyManager, versionUpdateStrategy);
-    
+    this.versionManager = new VersionManager(this.moduleRegistry, versionUpdateStrategy);
+
     // Log discovered modules through hierarchy manager
-    const moduleIds = this.hierarchyManager.getModuleIds();
+    const moduleIds = this.moduleRegistry.getModuleIds();
     core.info(`Found ${moduleIds.length} modules: ${moduleIds.join(', ')}`);
 
     // Analyze commits since last release
     const moduleCommits = await this.commitAnalyzer.analyzeCommitsSinceLastRelease(
-      this.hierarchyManager
+      this.moduleRegistry
     );
 
     // Initialize version bumper service
@@ -120,17 +130,16 @@ export class VerseRunner {
       prereleaseId: this.options.prereleaseId,
       repoRoot: this.options.repoRoot
     };
-    this.versionBumper = new VersionBumper(versionBumperOptions);
+    this.versionBumper = new VersionBumper(this.moduleRegistry, versionBumperOptions);
 
     // Calculate version bumps with cascade effects
     const processedModuleChanges = await this.versionBumper.calculateVersionBumps(
-      this.hierarchyManager,
       moduleCommits,
       this.config
     );
 
-    const discoveredModules = Array.from(this.hierarchyManager.getModules().values());
-    
+    const discoveredModules = Array.from(this.moduleRegistry.getModules().values());
+
     if (processedModuleChanges.length === 0) {
       core.info('✨ No version changes needed');
       return {
@@ -151,7 +160,7 @@ export class VerseRunner {
 
     // Generate changelogs
     const changelogPaths = await this.changelogGenerator.generateChangelogs(
-      changedModules, 
+      changedModules,
       moduleCommits
     );
 

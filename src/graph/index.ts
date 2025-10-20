@@ -1,5 +1,5 @@
 import { ProcessingModuleChange, BumpType } from '../adapters/core.js';
-import { ModuleRegistry } from '../adapters/module-registry.js';
+import { ModuleRegistry } from '../services/module-registry.js';
 import { maxBumpType } from '../semver/index.js';
 import * as core from '@actions/core';
 

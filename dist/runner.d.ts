@@ -24,7 +24,7 @@ export type RunnerResult = {
 };
 export declare class VerseRunner {
     private moduleSystemFactory;
-    private hierarchyManager;
+    private moduleRegistry;
     private versionManager;
     private config;
     private adapter;
@@ -35,6 +35,8 @@ export declare class VerseRunner {
     private versionApplier;
     private changelogGenerator;
     private gitOperations;
+    private adapterIdentifierRegistry;
+    private adapterMetadataProvider;
     constructor(options: RunnerOptions);
     run(): Promise<RunnerResult>;
 }

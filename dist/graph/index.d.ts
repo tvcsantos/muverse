@@ -1,5 +1,5 @@
 import { ProcessingModuleChange, BumpType } from '../adapters/core.js';
-import { ModuleRegistry } from '../adapters/module-registry.js';
+import { ModuleRegistry } from '../services/module-registry.js';
 /**
  * Calculate cascade effects when modules change.
  * Modifies the input array in place and returns all modules with cascade effects applied.

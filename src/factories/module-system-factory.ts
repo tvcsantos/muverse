@@ -1,5 +1,5 @@
-import { ModuleSystemFactory } from "../adapters/module-system-factory.js";
-import { GradleModuleSystemFactory } from '../adapters/gradle/gradle-module-system-factory.js';
+import { ModuleSystemFactory } from "../services/module-system-factory.js";
+import { GradleModuleSystemFactory } from '../adapters/gradle/services/gradle-module-system-factory.js';
 
 /**
  * Create a module system factory for the specified adapter.

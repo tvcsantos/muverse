@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Structure Information",
+  "description": "Schema for project structure information output",
+  "type": "object",
+  "patternProperties": {
+    ".*": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the module"
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative file system path to the module directory"
+        },
+        "version": {
+          "type": "string",
+          "description": "Current version of the module",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-.]+)?$"
+        },
+        "affectedModules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": ".*"
+          },
+          "description": "List of module ids that are affected when this module changes",
+          "uniqueItems": true
+        }
+      },
+      "required": ["name", "path", "version", "affectedModules"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      ":": {
+        "name": "io.mb:mbio-starter",
+        "path": ".",
+        "version": "1.0.0",
+        "affectedModules": [":base", ":spring", ":spring:core", ":spring:servlet"]
+      },
+      ":base": {
+        "name": "io.mb:base",
+        "path": "base",
+        "version": "1.0.0",
+        "affectedModules": []
+      },
+      ":spring": {
+        "name": "io.mb:spring",
+        "path": "spring",
+        "version": "1.0.0",
+        "affectedModules": [":spring:core", ":spring:servlet"]
+      },
+      ":spring:core": {
+        "name": "io.mb:spring-core",
+        "path": "spring/core",
+        "version": "1.0.0",
+        "affectedModules": []
+      },
+      ":spring:servlet": {
+        "name": "io.mb:spring-servlet",
+        "path": "spring/servlet",
+        "version": "1.0.0",
+        "affectedModules": []
+      }
+    }
+  ]
+}
+

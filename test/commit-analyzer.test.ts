@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommitAnalyzer } from '../src/services/commit-analyzer.js';
-import { ModuleRegistry } from '../src/adapters/module-registry.js';
 import * as gitIndex from '../src/git/index.js';
 import { parseSemVer } from '../src/semver/index.js';
 import { CommitInfo, Module, ProjectInformation } from '../src/adapters/core.js';
+import { ModuleRegistry } from '../src/services/module-registry.js';
 
 // Mock the git module
 vi.mock('../src/git/index.js', () => ({

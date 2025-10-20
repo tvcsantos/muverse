@@ -1,7 +1,7 @@
 import { ProcessedModuleChange, CommitInfo } from '../adapters/core.js';
 import { Config } from '../config/index.js';
-import { ModuleRegistry } from '../adapters/module-registry.js';
-import { AdapterMetadata } from '../adapters/adapter-identifier.js';
+import { ModuleRegistry } from './module-registry.js';
+import { AdapterMetadata } from './adapter-identifier.js';
 export type VersionBumperOptions = {
     prereleaseMode: boolean;
     bumpUnchanged: boolean;
@@ -13,9 +13,10 @@ export type VersionBumperOptions = {
     repoRoot: string;
 };
 export declare class VersionBumper {
+    private readonly moduleRegistry;
     private readonly options;
-    constructor(options: VersionBumperOptions);
-    calculateVersionBumps(hierarchyManager: ModuleRegistry, moduleCommits: Map<string, CommitInfo[]>, config: Config): Promise<ProcessedModuleChange[]>;
+    constructor(moduleRegistry: ModuleRegistry, options: VersionBumperOptions);
+    calculateVersionBumps(moduleCommits: Map<string, CommitInfo[]>, config: Config): Promise<ProcessedModuleChange[]>;
     private calculateInitialBumps;
     private applyVersionCalculations;
 }

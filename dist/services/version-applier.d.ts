@@ -1,5 +1,5 @@
 import { ProcessedModuleChange, BumpType } from '../adapters/core.js';
-import { VersionManager } from '../adapters/version-manager.js';
+import { VersionManager } from './version-manager.js';
 export type VersionApplierOptions = {
     dryRun: boolean;
 };

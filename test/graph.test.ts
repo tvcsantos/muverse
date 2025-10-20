@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateCascadeEffects } from '../src/graph/index.js';
 import { ProcessingModuleChange, BumpType, ProjectInformation } from '../src/adapters/core.js';
 import { parseSemVer } from '../src/semver/index.js';
-import { ModuleRegistry } from '../src/adapters/module-registry.js';
+import { ModuleRegistry } from '../src/services/module-registry.js';
 
 describe('Cascade Effects', () => {
   const hierarchyResult: ProjectInformation = {

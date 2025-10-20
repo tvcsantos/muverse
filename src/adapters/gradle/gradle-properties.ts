@@ -10,6 +10,8 @@ const VERSION_REGEX = /\.version$/;
  * - version -> ":" (root)
  * - x.version -> ":x"
  * - x.y.version -> ":x:y"
+ * @param propertyName The version property name
+ * @returns The module ID
  */
 function versionPropertyNameToModuleId(propertyName: string): string {
   if (propertyName === VERSION) {
@@ -29,6 +31,8 @@ function versionPropertyNameToModuleId(propertyName: string): string {
  * - ":" -> "version"
  * - ":x" -> "x.version"
  * - ":x:y" -> "x.y.version"
+ * @param moduleId The module ID
+ * @returns The version property name
  */
 export function moduleIdToVersionPropertyName(moduleId: string): string {
   if (moduleId === ROOT_MODULE_ID) {

@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import { ProcessedModuleChange, BumpType } from '../adapters/core.js';
-import { VersionManager } from '../adapters/version-manager.js';
+import { VersionManager } from './version-manager.js';
 import { formatSemVer } from '../semver/index.js';
 
 export type VersionApplierOptions = {
