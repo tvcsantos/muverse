@@ -29,7 +29,7 @@ export async function getRawProjectInformation(projectRoot: string): Promise<Raw
     '--console=plain',
     '--init-script',
     initScriptPath,
-    'hierarchy'
+    'structure'
   ];
 
   const result = await getExecOutput(gradlew, args, {
