@@ -10,9 +10,24 @@ const config = {
     esModule: true,
     file: 'dist/index.js',
     format: 'es',
-    sourcemap: true
+    sourcemap: true,
+    inlineDynamicImports: true
   },
-  plugins: [typescript(), nodeResolve({ preferBuiltins: true }), commonjs()]
+  onwarn(warning, warn) {
+    // Suppress circular dependency warnings from node_modules
+    if (
+      warning.code === 'CIRCULAR_DEPENDENCY' &&
+      warning.ids?.some(id => id.includes('node_modules'))
+    ) {
+      return
+    }
+    warn(warning)
+  },
+  plugins: [
+    typescript(),
+    nodeResolve({ preferBuiltins: true }),
+    commonjs()
+  ]
 }
 
 export default config
