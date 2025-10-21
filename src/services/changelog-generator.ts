@@ -34,7 +34,6 @@ export class ChangelogGenerator {
     const changelogPaths = await generateChangelogsForModules(
       moduleResults,
       async (moduleId) => moduleCommits.get(moduleId) || [],
-      this.options.repoRoot
     );
 
     // Generate root changelog
