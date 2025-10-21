@@ -164,6 +164,7 @@ This applies `-SNAPSHOT` suffix to **all** module versions, generating versions 
 | `timestamp-versions` | Use timestamp-based prerelease identifiers (e.g., alpha.20251008.1530) | `false` |
 | `append-snapshot` | Add -SNAPSHOT suffix to all versions if supported by adapter (e.g. `gradle`) | `false` |
 | `push-changes` | Commit and push version changes and changelogs to remote | `true` |
+| `generate-changelog` | Generate or update changelog files for changed modules | `true` |
 
 > 📖 **Detailed Pre-release Documentation**: See [PRERELEASE.md](PRERELEASE.md) for comprehensive examples and use cases.
 
@@ -266,9 +267,6 @@ VERSE will automatically search for configuration in the following order:
     "onMajorOfDependency": "minor",
     "onMinorOfDependency": "patch",
     "onPatchOfDependency": "none"
-  },
-  "gradle": {
-    "versionSource": ["gradle.properties"]
   }
 }
 ```
@@ -290,10 +288,6 @@ dependencyRules:
   onMajorOfDependency: minor
   onMinorOfDependency: patch
   onPatchOfDependency: none
-
-gradle:
-  versionSource:
-    - gradle.properties
 ```
 
 #### JavaScript Format (`verse.config.js`)
@@ -429,26 +423,48 @@ npm run test:coverage # Run with coverage
 
 ## Architecture
 
-- **`src/adapters/`** - Language-specific adapters (Gradle, future: Node, Python)
+- **`src/adapters/`** - Language-specific adapters (Gradle, with extensible architecture for future adapters)
+- **`src/services/`** - Core services (version bumping, module registry, changelog generation, git operations)
+- **`src/factories/`** - Factory pattern implementations for adapter and module system creation
 - **`src/semver/`** - Semantic version utilities
 - **`src/git/`** - Git operations and commit parsing
-- **`src/graph/`** - Dependency graph and cascade logic
 - **`src/config/`** - Configuration loading and validation
 - **`src/changelog/`** - Changelog generation
-- **`src/runner.ts`** - Main orchestration logic
-- **`src/io/`** - GitHub Action input/output handling
+- **`src/utils/`** - Utility functions for versioning, commits, and file operations
 
 ## Extending
 
-Add new language adapters by implementing the `LanguageAdapter` interface:
+Add new language adapters by implementing the adapter interfaces:
 
 ```typescript
-class MyAdapter extends BaseAdapter {
-  async detectModules(repoRoot: string): Promise<Module[]> { /* ... */ }
-  async readVersion(module: Module): Promise<SemVer> { /* ... */ }
-  async writeVersion(module: Module, version: SemVer): Promise<void> { /* ... */ }
-  async getDependencies(module: Module): Promise<DependencyRef[]> { /* ... */ }
-  getName(): string { return 'my-adapter'; }
+// Adapter identifier for auto-detection
+class MyAdapterIdentifier implements AdapterIdentifier {
+  readonly metadata: AdapterMetadata = {
+    id: 'my-adapter',
+    capabilities: { supportsSnapshots: false }
+  };
+
+  async accept(projectRoot: string): Promise<boolean> {
+    // Check for adapter-specific files (e.g., build files)
+    return await fileExists(path.join(projectRoot, 'my-build-file'));
+  }
+}
+
+// Module detector for discovering project modules
+class MyModuleDetector implements ModuleDetector {
+  async detectModules(projectRoot: string): Promise<RawProjectInformation> {
+    // Detect and return module information
+  }
+}
+
+// Version update strategy for applying version changes
+class MyVersionUpdateStrategy implements VersionUpdateStrategy {
+  async applyVersionUpdates(
+    changes: ProcessedModuleChange[],
+    projectRoot: string
+  ): Promise<void> {
+    // Apply version changes to build files
+  }
 }
 ```
 

@@ -44,19 +44,19 @@ When enabled, appends build metadata in the format `+<short-sha>` to all version
 
 When enabled with `prerelease-mode`, generates timestamp-based prerelease identifiers in the format `{prerelease-id}.YYYYMMDD.HHMM` (UTC time). This provides unique, time-ordered versions for every build.
 
-### `gradle-snapshot`
-- **Description**: Add -SNAPSHOT suffix to all Gradle versions
+### `append-snapshot`
+- **Description**: Add -SNAPSHOT suffix to all versions if supported by adapter (e.g., Gradle)
 - **Required**: false
 - **Default**: `'false'`
 - **Example**: `'true'`
 
-When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module versions, following Gradle convention. This is different from prerelease mode - it applies to every module regardless of changes.
+When enabled for adapters that support snapshots (like Gradle), appends `-SNAPSHOT` suffix to **all** module versions, following the adapter's convention. This is different from prerelease mode - it applies to every module regardless of changes.
 
 ## Usage Examples
 
 ### Basic Pre-release Mode
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     prerelease-mode: 'true'
     prerelease-id: 'alpha'
@@ -66,7 +66,7 @@ When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module v
 
 ### Development Builds with Unchanged Modules
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     prerelease-mode: 'true'
     prerelease-id: 'dev'
@@ -77,7 +77,7 @@ When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module v
 
 ### Build Metadata with Short SHA
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     add-build-metadata: 'true'
 ```
@@ -86,7 +86,7 @@ When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module v
 
 ### Alpha/Beta Releases
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     prerelease-mode: 'true'
     prerelease-id: 'alpha'
@@ -96,7 +96,7 @@ When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module v
 
 ### Timestamp-based Versions
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     prerelease-mode: 'true'
     prerelease-id: 'alpha'
@@ -108,7 +108,7 @@ When enabled for Gradle projects, appends `-SNAPSHOT` suffix to **all** module v
 
 ### Complete CI/CD Pipeline Example
 ```yaml
-- uses: your-org/verse@v1
+- uses: tvcsantos/verse@v1
   with:
     prerelease-mode: 'true'
     prerelease-id: 'ci'
@@ -156,7 +156,7 @@ The timestamp format `YYYYMMDD.HHMM` uses UTC time to ensure consistency across 
 Create pre-release versions for every commit to development branches:
 ```yaml
 if: github.ref == 'refs/heads/develop'
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   prerelease-id: 'alpha'
@@ -167,7 +167,7 @@ with:
 Generate alpha versions for feature branches:
 ```yaml
 if: startsWith(github.ref, 'refs/heads/feature/')
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   prerelease-id: 'alpha'
@@ -177,7 +177,7 @@ with:
 Create release candidates before final releases:
 ```yaml
 if: github.ref == 'refs/heads/release'
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   prerelease-id: 'rc'
@@ -186,7 +186,7 @@ with:
 ### 4. Development Builds
 Perfect for continuous integration and development builds:
 ```yaml
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   adapter: 'gradle'
   prerelease-mode: 'true'
@@ -197,7 +197,7 @@ with:
 ### 5. Build Metadata for Unique Versions
 Create unique versions for every commit using build metadata:
 ```yaml
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   add-build-metadata: 'true'
 ```
@@ -205,7 +205,7 @@ with:
 ### 6. Combined Mode: Pre-release + Build Metadata
 Get the best of both worlds:
 ```yaml
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   prerelease-id: 'alpha'
@@ -214,12 +214,12 @@ with:
 ```
 **Result**: `1.2.4-alpha.0+a7b8c9d`
 
-### 7. Gradle SNAPSHOT Versions
-Apply Gradle's conventional `-SNAPSHOT` suffix to all modules:
+### 7. Snapshot Versions
+Apply snapshot suffix to all modules:
 ```yaml
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
-  gradle-snapshot: 'true'
+  append-snapshot: 'true'
 ```
 **Result**: All modules get `-SNAPSHOT` suffix: `1.2.3-SNAPSHOT`, `2.1.0-SNAPSHOT`
 
@@ -233,13 +233,13 @@ The `push-changes` input parameter controls whether the action commits and pushe
 
 ```yaml
 # Enable git operations (default)
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   push-changes: 'true'      # Commits and pushes version changes
 
 # Disable git operations  
-uses: your-org/verse@v1
+uses: tvcsantos/verse@v1
 with:
   prerelease-mode: 'true'
   push-changes: 'false'     # No commits/pushes, just updates files
@@ -262,7 +262,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       - name: Pre-release version
-        uses: your-org/verse@v1
+        uses: tvcsantos/verse@v1
         with:
           prerelease-mode: 'true'
           prerelease-id: 'alpha'
@@ -283,7 +283,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Validate versions
-        uses: your-org/verse@v1
+        uses: tvcsantos/verse@v1
         with:
           prerelease-mode: 'true'
           dry-run: 'true'             # Don't make changes
@@ -303,7 +303,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Generate release versions
-        uses: your-org/verse@v1
+        uses: tvcsantos/verse@v1
         with:
           prerelease-mode: 'true'
           prerelease-id: 'rc'
