@@ -5,8 +5,14 @@
  */
 
 import { getExecOutput, exec } from '@actions/exec';
-import * as conventionalCommitsParser from 'conventional-commits-parser';
+import { CommitParser } from 'conventional-commits-parser';
 import * as core from '@actions/core';
+
+/**
+ * Shared CommitParser instance for parsing conventional commits.
+ * Reused across all commit parsing operations to avoid repeated instantiation.
+ */
+const commitParser = new CommitParser();
 
 /**
  * Represents a parsed git tag with extracted module and version metadata.
@@ -221,7 +227,7 @@ function parseGitLog(output: string): CommitInfo[] {
     try {
       // Parse using Conventional Commits specification
       // Combines subject and body for full context (breaking changes may be in body)
-      const parsed = conventionalCommitsParser.sync(subject + '\n\n' + body);
+      const parsed = commitParser.parse(subject + '\n\n' + body);
       
       // Build CommitInfo from parsed data
       commits.push({
