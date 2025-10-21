@@ -16,20 +16,12 @@ export type ChangelogOptions = {
     readonly includeScopes: boolean;
     readonly groupByType: boolean;
 };
-/**
- * Generate changelog for a module
- */
+/** Generate changelog content for a module. */
 export declare function generateChangelog(moduleResult: ModuleChangeResult, commits: CommitInfo[], options?: ChangelogOptions): Promise<string>;
-/**
- * Update or create CHANGELOG.md file for a module
- */
+/** Update or create a changelog file for a module. */
 export declare function updateChangelogFile(moduleResult: ModuleChangeResult, changelogContent: string, repoRoot: string): Promise<string>;
-/**
- * Generate changelog for multiple modules
- */
+/** Generate changelog for multiple modules. */
 export declare function generateChangelogsForModules(moduleResults: ModuleChangeResult[], getCommitsForModule: (moduleId: string) => Promise<CommitInfo[]>, repoRoot: string, options?: ChangelogOptions): Promise<string[]>;
-/**
- * Generate a root changelog that summarizes all module changes
- */
+/** Generate a root changelog that summarizes all module changes. */
 export declare function generateRootChangelog(moduleResults: ModuleChangeResult[], repoRoot: string): Promise<string>;
 //# sourceMappingURL=index.d.ts.map

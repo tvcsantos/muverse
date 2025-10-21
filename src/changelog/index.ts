@@ -21,9 +21,7 @@ export type ChangelogOptions = {
   readonly groupByType: boolean;
 };
 
-/**
- * Generate changelog for a module
- */
+/** Generate changelog content for a module. */
 export async function generateChangelog(
   moduleResult: ModuleChangeResult,
   commits: CommitInfo[],
@@ -129,9 +127,7 @@ function formatCommitLine(commit: CommitInfo, options: ChangelogOptions): string
   return line;
 }
 
-/**
- * Update or create CHANGELOG.md file for a module
- */
+/** Update or create a changelog file for a module. */
 export async function updateChangelogFile(
   moduleResult: ModuleChangeResult,
   changelogContent: string,
@@ -185,9 +181,7 @@ export async function updateChangelogFile(
   return changelogPath;
 }
 
-/**
- * Generate changelog for multiple modules
- */
+/** Generate changelog for multiple modules. */
 export async function generateChangelogsForModules(
   moduleResults: ModuleChangeResult[],
   getCommitsForModule: (moduleId: string) => Promise<CommitInfo[]>,
@@ -216,9 +210,7 @@ export async function generateChangelogsForModules(
   return changelogPaths;
 }
 
-/**
- * Generate a root changelog that summarizes all module changes
- */
+/** Generate a root changelog that summarizes all module changes. */
 export async function generateRootChangelog(
   moduleResults: ModuleChangeResult[],
   repoRoot: string
