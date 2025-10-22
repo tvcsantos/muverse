@@ -25,7 +25,6 @@ import { ConfigurationValidator } from './configuration-validator.js';
 export type RunnerOptions = {
   readonly repoRoot: string;
   readonly adapter?: string;
-  readonly configPath?: string;
   readonly dryRun: boolean;
   readonly pushTags: boolean;
   readonly prereleaseMode: boolean;
@@ -92,7 +91,6 @@ export class VerseRunner {
 
     // Load configuration
     this.config = await this.configurationLoader.load(
-      this.options.configPath,
       this.options.repoRoot
     );
 

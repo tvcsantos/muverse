@@ -13,7 +13,6 @@ export async function run(): Promise<void> {
     // Get inputs
     const dryRun = parseBooleanInput(core.getInput('dry-run'));
     const adapter = core.getInput('adapter') || undefined;
-    const configPath = core.getInput('config-path') || undefined;
     const pushTags = parseBooleanInput(core.getInput('push-tags'));
     const prereleaseMode = parseBooleanInput(core.getInput('prerelease-mode'));
     const prereleaseId = core.getInput('prerelease-id') || 'alpha';
@@ -39,7 +38,6 @@ export async function run(): Promise<void> {
     core.info('🚀 Starting VERSE engine...');
     core.info(`Repository: ${repoRoot}`);
     core.info(`Adapter: ${adapter || '(auto-detect)'}`);
-    core.info(`Config: ${configPath}`);
     core.info(`Dry run: ${dryRun}`);
     core.info(`Prerelease mode: ${prereleaseMode}`);
     if (prereleaseMode) {
@@ -56,7 +54,6 @@ export async function run(): Promise<void> {
     const options: RunnerOptions = {
       repoRoot,
       adapter,
-      configPath,
       dryRun,
       pushTags,
       prereleaseMode,

@@ -153,10 +153,9 @@ This applies `-SNAPSHOT` suffix to **all** module versions, generating versions 
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `dry-run` | Run without making changes | `false` |
-| `adapter` | Language adapter to use (auto-detected if not provided) | `auto-detect` |
-| `config-path` | Optional path to specific config file (auto-discovery used if not provided) | `` |
-| `push-tags` | Push tags to remote | `true` |
+| `dry-run` | Run without writing or pushing | `false` |
+| `adapter` | Language adapter (auto-detected if not provided) | `` |
+| `push-tags` | Push tags to origin | `true` |
 | `prerelease-mode` | Generate pre-release versions | `false` |
 | `prerelease-id` | Pre-release identifier | `alpha` |
 | `bump-unchanged` | Bump modules with no changes in prerelease mode | `false` |
@@ -328,22 +327,13 @@ module.exports = {
 
 ### Usage Examples
 
-#### Using Auto-Discovery (Recommended)
-```yaml
-- name: VERSE Semantic Evolution
-  uses: tvcsantos/verse@v1
-  with:
-    adapter: gradle
-    # No config-path needed - VERSE will find your config automatically
-```
+### Usage Example
 
-#### Using Specific Config File
 ```yaml
 - name: VERSE Semantic Evolution
   uses: tvcsantos/verse@v1
   with:
     adapter: gradle
-    config-path: 'custom/path/to/verse.config.js'
 ```
 
 ### Configuration Validation
@@ -356,10 +346,6 @@ All configuration files are validated using [Zod](https://github.com/colinhacks/
 - **Schema Enforcement**: Ensures only valid values are accepted
 
 If validation fails, VERSE will provide a detailed error message indicating which configuration fields are invalid, making it easy to identify and fix issues.
-
-### Legacy Configuration
-
-If you specify a `config-path` in your GitHub Action, VERSE will try to load that specific file first. If not found, it will fall back to the automatic discovery described above.
 
 ## Gradle Project Structure
 
