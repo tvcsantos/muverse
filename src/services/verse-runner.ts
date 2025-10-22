@@ -104,10 +104,6 @@ export class VerseRunner {
     const detector = this.moduleSystemFactory.createDetector();
     this.moduleRegistry = await detector.detect();
 
-    // Create version manager  
-    const versionUpdateStrategy = this.moduleSystemFactory.createVersionUpdateStrategy();
-    this.versionManager = new VersionManager(this.moduleRegistry, versionUpdateStrategy);
-
     // Log discovered modules through hierarchy manager
     const moduleIds = this.moduleRegistry.getModuleIds();
     core.info(`Found ${moduleIds.length} modules: ${moduleIds.join(', ')}`);
@@ -145,6 +141,10 @@ export class VerseRunner {
         changelogPaths: [],
       };
     }
+
+    // Create version manager  
+    const versionUpdateStrategy = this.moduleSystemFactory.createVersionUpdateStrategy();
+    this.versionManager = new VersionManager(this.moduleRegistry, versionUpdateStrategy);
 
     // Initialize version applier and apply changes
     const versionApplierOptions: VersionApplierOptions = {

@@ -95,4 +95,13 @@ export class VersionManager {
   clearPendingUpdates(): void {
     this.pendingUpdates.clear();
   }
+
+  /**
+   * Gets the number of pending updates in the queue.
+   * 
+   * @returns The count of pending updates that have not been processed yet.
+   */
+  getPendingUpdatesCount(): number {
+    return this.pendingUpdates.size;
+  }
 }

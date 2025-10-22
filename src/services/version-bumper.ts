@@ -210,7 +210,6 @@ export class VersionBumper {
     return processingModuleChanges;
   }
 
-
   /**
    * Calculates cascade effects when modules change.
    * 
@@ -308,7 +307,6 @@ export class VersionBumper {
     // Return the modified array (same reference, but with cascade effects applied)
     return allModuleChanges;
   }
-
 
   /**
    * Applies version calculations and transformations to all modules.

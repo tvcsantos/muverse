@@ -57,23 +57,21 @@ export class AdapterMetadataProvider {
      * @throws {Error} If an adapter was specified but is not registered in the registry
      */
     private async getSpecifiedAdapter(): Promise<AdapterIdentifier | null> {
-        if (this.adapterId) {
-            const identifier = this.adapterIdentifierRegistry.getIdentifierById(this.adapterId);
+        if (!this.adapterId) return null;
+            
+        const identifier = this.adapterIdentifierRegistry.getIdentifierById(this.adapterId);
 
-            if (!identifier) {
-                throw new Error(
-                    `Unsupported adapter '${this.adapterId}'. Supported adapters: ${
-                        this.adapterIdentifierRegistry.getSupportedAdapters().join(', ')
-                    }`
-                );
-            }
-
-            core.info(`📝 Using explicitly provided adapter: ${this.adapterId}`);
-
-            return identifier;
+        if (!identifier) {
+            throw new Error(
+                `Unsupported adapter '${this.adapterId}'. Supported adapters: ${
+                    this.adapterIdentifierRegistry.getSupportedAdapters().join(', ')
+                }`
+            );
         }
 
-        return null;
+        core.info(`📝 Using explicitly provided adapter: ${this.adapterId}`);
+
+        return identifier;
     }
 
     /**

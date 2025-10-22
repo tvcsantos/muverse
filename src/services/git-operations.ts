@@ -65,28 +65,36 @@ export class GitOperations {
   async createAndPushTags(moduleChangeResults: ModuleChangeResult[]): Promise<string[]> {
     const createdTags: string[] = [];
 
-    if (this.options.dryRun || !this.options.pushTags || !this.options.pushChanges) {
-      core.info('🏷️ Dry run mode - tags that would be created:');
-      for (const change of moduleChangeResults) {
-        if (change.declaredVersion) {
-          const tagName = `${change.name}@${change.to}`;
-          createdTags.push(tagName);
-          core.info(`  Would create tag: ${tagName}`);
-        }
+    const disabledBy = [
+      this.options.dryRun && 'dry-run',
+      !this.options.pushTags && 'push-tags',
+      !this.options.pushChanges && 'push-changes'
+    ].filter(Boolean).join(', ');
+
+    core.info('🔍 Filtering modules with declared versions...');
+
+    const modulesWithDeclaredVersions = moduleChangeResults.filter(change => change.declaredVersion);
+
+    if (disabledBy) {
+      core.info(`🏷️ Skipping tag creation and push (disabled by ${disabledBy} input(s))`);
+      
+      for (const change of modulesWithDeclaredVersions) {
+        const tagName = `${change.name}@${change.to}`;
+        createdTags.push(tagName);
+        core.info(`  Would create tag: ${tagName}`);
       }
+
       return createdTags;
     }
 
-    core.info('🏷️ Creating tags...');
-    for (const change of moduleChangeResults) {
-      if (change.declaredVersion) {
-        const tagName = `${change.name}@${change.to}`;
-        const message = `Release ${change.name} v${change.to}`;
-        
-        createTag(tagName, message, { cwd: this.options.repoRoot });
-        createdTags.push(tagName);
-        core.info(`  Created tag: ${tagName}`);
-      }
+    core.info('🏷️ Creating tags...');    
+    for (const change of modulesWithDeclaredVersions) {
+      const tagName = `${change.name}@${change.to}`;
+      const message = `Release ${change.name} v${change.to}`;
+      
+      createTag(tagName, message, { cwd: this.options.repoRoot });
+      createdTags.push(tagName);
+      core.info(`  Created tag: ${tagName}`);
     }
 
     // Push tags

@@ -32,13 +32,22 @@ export class VersionApplier {
       return [];
     }
 
-    this.logPlannedChanges(processedModuleChanges);
+    core.info('🔍 Filtering modules with declared versions...');
+    
+    const modulesWithDeclaredVersions = processedModuleChanges.filter(change => change.module.declaredVersion);
+    
+    if (modulesWithDeclaredVersions.length === 0) {
+      core.info('✨ No modules with declared versions to update');
+      return [];
+    }
+
+    this.logPlannedChanges(modulesWithDeclaredVersions);
     
     if (this.options.dryRun) {
       core.info('🏃‍♂️ Dry run mode - version changes will not be written to files');
     } else {
-      await this.stageVersions(processedModuleChanges);
-      await this.commitVersions(processedModuleChanges.length);
+      await this.stageVersions(modulesWithDeclaredVersions);
+      await this.commitVersions();
     }
     
     // Create and return result objects
@@ -57,28 +66,25 @@ export class VersionApplier {
   private logPlannedChanges(processedModuleChanges: ProcessedModuleChange[]): void {
     core.info(`📈 Planning to update ${processedModuleChanges.length} modules:`);
     for (const change of processedModuleChanges) {
-      if (change.module.declaredVersion) {
-        const from = formatSemVer(change.fromVersion);
-        const to = change.toVersion;
-        core.info(`  ${change.module.id}: ${from} → ${to} (${change.bumpType}, ${change.reason})`);
-      }
+      const from = formatSemVer(change.fromVersion);
+      const to = change.toVersion;
+      core.info(`  ${change.module.id}: ${from} → ${to} (${change.bumpType}, ${change.reason})`);
     }
   }
 
   private async stageVersions(processedModuleChanges: ProcessedModuleChange[]): Promise<void> {
     core.info('✍️ Staging new versions...');
     for (const change of processedModuleChanges) {
-      if (change.module.declaredVersion) {
-        // Use toVersion directly (now includes all transformations like Gradle snapshots)
-        this.versionManager.updateVersion(change.module.id, change.toVersion);
-        core.info(`  Staged ${change.module.id} to ${change.toVersion}`);
-      }
+      // Use toVersion directly (now includes all transformations like Gradle snapshots)
+      this.versionManager.updateVersion(change.module.id, change.toVersion);
+      core.info(`  Staged ${change.module.id} to ${change.toVersion}`);
     }
   }
 
-  private async commitVersions(changeCount: number): Promise<void> {
+  private async commitVersions(): Promise<void> {
     core.info('💾 Committing version updates to files...');
+    const pendingUpdatesCount = this.versionManager.getPendingUpdatesCount();
     await this.versionManager.commit();
-    core.info(`✅ Committed ${changeCount} version updates`);
+    core.info(`✅ Committed ${pendingUpdatesCount} version updates`);
   }
 }
