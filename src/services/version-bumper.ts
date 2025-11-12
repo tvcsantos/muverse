@@ -250,10 +250,17 @@ export class VersionBumper {
 
     while (queue.length > 0) {
       const currentChange = queue.shift()!;
+
+      // No processing needed, mark as processed
+      if (!currentChange.needsProcessing || currentChange.bumpType === 'none') {
+        core.debug(`🔄 Skipping module ${currentChange.module.id} - no processing needed`);
+        processed.add(currentChange.module.id);
+        continue;
+      }
       
-      // Skip if already processed or no processing needed or no actual bump
-      if (processed.has(currentChange.module.id) || !currentChange.needsProcessing || currentChange.bumpType === 'none') {
-        core.debug(`🔄 Skipping module ${currentChange.module.id} - already processed or no processing needed`);
+      // Skip if already processed
+      if (processed.has(currentChange.module.id)) {
+        core.debug(`🔄 Skipping module ${currentChange.module.id} - already processed`);
         continue;
       }
       
@@ -264,11 +271,6 @@ export class VersionBumper {
       // Iterate through all modules that depend on the current module
       for (const dependentName of currentModuleInfo.affectedModules) {
         core.debug(`➡️ Processing dependent module ${dependentName} affected by ${currentChange.module.id} with bump ${currentChange.bumpType}`);
-        
-        if (processed.has(dependentName)) {
-          core.debug(`🔄 Skipping dependent module ${dependentName} - already processed`);
-          continue; // Already processed this module
-        }
 
         // Get the dependent module using O(1) lookup
         const existingChange = moduleMap.get(dependentName);
@@ -289,7 +291,7 @@ export class VersionBumper {
         // Update the existing change with cascade information
         // Take the maximum bump type if multiple dependencies affect this module
         const mergedBump = maxBumpType([existingChange.bumpType, requiredBump]);
-        if (mergedBump !== existingChange.bumpType || !existingChange.needsProcessing) {
+        if (mergedBump !== existingChange.bumpType) {
           core.debug(`🔄 Cascading bump for module ${dependentName} from ${existingChange.bumpType} to ${mergedBump} due to ${currentChange.module.id}`);
           // Update the module change in place
           existingChange.bumpType = mergedBump;
@@ -297,6 +299,7 @@ export class VersionBumper {
           existingChange.needsProcessing = true;
           
           // Add to queue for further processing (transitive cascades)
+          processed.delete(dependentName); // Allow re-processing
           queue.push(existingChange);
         } else {
           core.debug(`🔄 No changes needed for module ${dependentName} - already at ${existingChange.bumpType}`);
