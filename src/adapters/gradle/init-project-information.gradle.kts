@@ -6,7 +6,7 @@ import groovy.json.JsonGenerator
  * Returns "version" for root, "{name}.version" for subprojects.
  */
 fun Project.qualifiedVersionProperty(): String {
-    val name = name.split(':').last()
+    val name = if (name.contains(":")) name.split(':').last() else ""
     return if (name.isEmpty()) "version" else "${name}.version"
 }
 
