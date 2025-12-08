@@ -19,7 +19,7 @@ A semantic versioning engine for monorepos that uses Conventional Commits to aut
 
 ## 📦 Packages
 
-μVERSE provides three packages for different use cases:
+μVERSE provides three packages for different use cases. For more details, see the individual package READMEs.
 
 ### [@muverse/core](packages/core)
 
@@ -38,8 +38,6 @@ Command-line interface for interactive version management in local development a
 GitHub Actions integration for automated versioning in workflow pipelines.
 
 **Use when:** You want automated versioning in GitHub workflows.
-
-For specific package setup, see individual package READMEs.
 
 ## Commit Message Format
 
