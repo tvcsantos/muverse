@@ -51,10 +51,12 @@ GitHub Actions integration for automated versioning in workflow pipelines.
 [optional footer(s)]
 ```
 
-**Examples:**
+**Examples (default configuration):**
 - `feat(api): add new endpoint` → **minor** bump
 - `fix(core): resolve memory leak` → **patch** bump  
 - `feat!: breaking API change` → **major** bump
+
+> **Note:** Version bump rules are fully configurable via [configuration files](packages/core#configuration).
 
 ## Extending
 
