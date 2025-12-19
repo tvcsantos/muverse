@@ -80,7 +80,9 @@ gradle.rootProject {
                 val version = if (project.version == "unspecified") null else project.version
                 val type = if (project == gradle.rootProject) "root" else "module"
                 val versionPropertyKey = project.qualifiedVersionProperty()
-                val versionFromProperty = project.findProperty(versionPropertyKey) as? String
+                val versionFromProperty = (project.findProperty(versionPropertyKey) as? String)?.takeIf {
+                    it.isNotBlank() && it != "unspecified"
+                }
 
                 projectData[project.path] = mapOf(
                     "path" to path,
