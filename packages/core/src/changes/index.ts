@@ -19,6 +19,7 @@ import { isReleaseVersion } from "../semver/index.js";
 import { ModuleChangesConfig } from "../config/types.js";
 import { GitOptions } from "../git/types.js";
 import Handlebars from "handlebars";
+import type { ChangesRendererResult } from "../services/changes-renderer.js";
 
 Handlebars.registerHelper("eq", (a, b) => a === b);
 Handlebars.registerHelper("ne", (a, b) => a !== b);
@@ -76,8 +77,8 @@ export async function generateChangesForModules(
   multiModule: boolean,
   config?: ModuleChangesConfig,
   provider?: string,
-): Promise<string[]> {
-  const renderedPaths: string[] = [];
+): Promise<ChangesRendererResult[]> {
+  const renderedPaths: ChangesRendererResult[] = [];
 
   if (!config) {
     throw new Error(`Missing required changes rendering configuration`);
@@ -156,7 +157,7 @@ export async function generateChangesForModules(
       await updateChangesFile(changesContent, renderedPath, prependPlaceholder);
     }
 
-    renderedPaths.push(renderedPath);
+    renderedPaths.push({ moduleId: moduleResult.id, path: renderedPath });
   }
 
   return renderedPaths;
@@ -172,7 +173,7 @@ export async function generateRootChanges(
   filename: string,
   config?: ModuleChangesConfig,
   provider?: string,
-): Promise<string | undefined> {
+): Promise<ChangesRendererResult | undefined> {
   const moduleResult = moduleResults.find((result) => result.type === "root");
 
   if (!moduleResult) {
@@ -247,5 +248,5 @@ export async function generateRootChanges(
     await updateChangesFile(changesContent, renderedPath, prependPlaceholder);
   }
 
-  return renderedPath;
+  return { moduleId: moduleResult.id, path: renderedPath };
 }

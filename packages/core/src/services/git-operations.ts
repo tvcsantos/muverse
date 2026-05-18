@@ -21,6 +21,11 @@ export type GitOperationsOptions = {
   releaseNotesFilename: string;
 };
 
+export type CreatedTagResult = {
+  moduleId: string;
+  tag: string;
+};
+
 export class GitOperations {
   constructor(private readonly options: GitOperationsOptions) {}
 
@@ -83,8 +88,8 @@ export class GitOperations {
 
   async createAndPushTags(
     moduleChangeResults: ModuleChangeResult[],
-  ): Promise<string[]> {
-    const createdTags: string[] = [];
+  ): Promise<CreatedTagResult[]> {
+    const createdTags: CreatedTagResult[] = [];
 
     if (!this.options.createTags) {
       logger.info("Tag creation disabled, skipping tag creation and push");
@@ -116,7 +121,7 @@ export class GitOperations {
 
       for (const change of modulesWithDeclaredVersions) {
         const tagName = `${change.name}@${change.to}`;
-        createdTags.push(tagName);
+        createdTags.push({ moduleId: change.id, tag: tagName });
         logger.info("Would create tag (dry run)", { tag: tagName });
       }
 
@@ -128,7 +133,7 @@ export class GitOperations {
       const message = `Release ${change.name} v${change.to}`;
 
       await createTag(tagName, message, { cwd: this.options.repoRoot });
-      createdTags.push(tagName);
+      createdTags.push({ moduleId: change.id, tag: tagName });
       logger.debug("Tag created", { tag: tagName });
     }
     logger.info("Created tags", { count: createdTags.length });
@@ -140,9 +145,9 @@ export class GitOperations {
     });
 
     if (this.options.sequentialTagPush) {
-      for (const tagName of createdTags) {
-        await pushTag(tagName, { cwd: this.options.repoRoot });
-        logger.info("Tag pushed to remote", { tag: tagName });
+      for (const { tag } of createdTags) {
+        await pushTag(tag, { cwd: this.options.repoRoot });
+        logger.info("Tag pushed to remote", { tag });
       }
     } else {
       await pushTags({ cwd: this.options.repoRoot });

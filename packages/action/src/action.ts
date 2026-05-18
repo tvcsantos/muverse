@@ -73,9 +73,9 @@ export async function run(): Promise<void> {
     core.setOutput('bumped', result.bumped.toString());
     core.setOutput('discovered-modules', JSON.stringify(result.discoveredModules));
     core.setOutput('changed-modules', JSON.stringify(result.changedModules));
-    core.setOutput('created-tags', result.createdTags.join(','));
-    core.setOutput('changelog-paths', result.changelogPaths.join(','));
-    core.setOutput('release-notes-paths', result.releaseNotesPaths.join(','));
+    core.setOutput('created-tags', JSON.stringify(result.createdTags));
+    core.setOutput('changelog-paths', JSON.stringify(result.changelogPaths));
+    core.setOutput('release-notes-paths', JSON.stringify(result.releaseNotesPaths));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     core.setFailed(`Action failed: ${errorMessage}`);

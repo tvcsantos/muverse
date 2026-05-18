@@ -12,8 +12,8 @@ import {
   VersionApplierOptions,
   ModuleChangeResult,
 } from "./version-applier.js";
-import { ChangesRenderer } from "./changes-renderer.js";
-import { GitOperations, GitOperationsOptions } from "./git-operations.js";
+import { ChangesRenderer, ChangesRendererResult } from "./changes-renderer.js";
+import { CreatedTagResult, GitOperations, GitOperationsOptions } from "./git-operations.js";
 import { AdapterMetadata } from "./adapter-identifier.js";
 import { AdapterMetadataProvider } from "./adapter-metadata-provider.js";
 import { AdapterIdentifierRegistry } from "./adapter-identifier-registry.js";
@@ -53,9 +53,9 @@ export type RunnerResult = {
   readonly bumped: boolean;
   readonly discoveredModules: Array<Module>;
   readonly changedModules: Array<ModuleChangeResult>;
-  readonly createdTags: string[];
-  readonly changelogPaths: string[];
-  readonly releaseNotesPaths: string[];
+  readonly createdTags: CreatedTagResult[];
+  readonly changelogPaths: ChangesRendererResult[];
+  readonly releaseNotesPaths: ChangesRendererResult[];
 };
 
 export class VersuRunner {
@@ -71,7 +71,6 @@ export class VersuRunner {
   private commitAnalyzer!: CommitAnalyzer;
   private versionBumper!: VersionBumper; // Will be initialized in run()
   private versionApplier!: VersionApplier; // Will be initialized in run()
-  private changelogGenerator!: ChangesRenderer; // Will be initialized in run()
   private gitOperations!: GitOperations; // Will be initialized in run()
   private adapterIdentifierRegistry!: AdapterIdentifierRegistry;
   private adapterMetadataProvider!: AdapterMetadataProvider;
@@ -122,10 +121,10 @@ export class VersuRunner {
     if (!result) return;
     if (result.bumped) {
       logger.info("Modules version updated", {
-        modules: result.changedModules.map((m) => ({
-          id: m.id,
-          from: m.from,
-          to: m.to,
+        modules: result.changedModules.map((module) => ({
+          id: module.id,
+          from: module.from,
+          to: module.to,
         })),
       });
 
@@ -289,8 +288,8 @@ export class VersuRunner {
     changedModules: ModuleChangeResult[],
     moduleCommits: Map<string, { commits: Commit[]; lastTag: string | null }>,
     multiModule: boolean,
-  ): Promise<string[]> {
-    this.changelogGenerator = new ChangesRenderer({
+  ): Promise<ChangesRendererResult[]> {
+    const changelogGenerator = new ChangesRenderer({
       render: this.options.generateChangelog,
       repoRoot: this.options.repoRoot,
       dryRun: this.options.dryRun,
@@ -301,7 +300,7 @@ export class VersuRunner {
     });
 
     // Generate changelogs
-    const changelogPaths = await this.changelogGenerator.render(
+    const changelogPaths = await changelogGenerator.render(
       changedModules,
       moduleCommits,
     );
@@ -313,8 +312,8 @@ export class VersuRunner {
     changedModules: ModuleChangeResult[],
     moduleCommits: Map<string, { commits: Commit[]; lastTag: string | null }>,
     multiModule: boolean,
-  ): Promise<string[]> {
-    this.changelogGenerator = new ChangesRenderer({
+  ): Promise<ChangesRendererResult[]> {
+    const releaseNotesGenerator = new ChangesRenderer({
       render: this.options.generateReleaseNotes,
       repoRoot: this.options.repoRoot,
       dryRun: this.options.dryRun,
@@ -324,18 +323,18 @@ export class VersuRunner {
       provider: this.options.provider,
     });
 
-    // Generate changelogs
-    const changelogPaths = await this.changelogGenerator.render(
+    // Generate release notes
+    const releaseNotesPaths = await releaseNotesGenerator.render(
       changedModules,
       moduleCommits,
     );
 
-    return changelogPaths;
+    return releaseNotesPaths;
   }
 
   private async commitChangesAndPush(
     changedModules: ModuleChangeResult[],
-  ): Promise<string[]> {
+  ): Promise<CreatedTagResult[]> {
     // Initialize git operations service
     const gitOperationsOptions: GitOperationsOptions = {
       pushChanges: this.options.pushChanges,

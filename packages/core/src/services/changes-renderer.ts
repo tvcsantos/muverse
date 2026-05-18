@@ -17,13 +17,18 @@ export type ChangesRendererOptions = {
   provider?: string;
 };
 
+export type ChangesRendererResult = {
+  moduleId: string;
+  path: string;
+};
+
 export class ChangesRenderer {
   constructor(private readonly options: ChangesRendererOptions) {}
 
   async render(
     moduleResults: ModuleChangeResult[],
     moduleCommits: Map<string, { commits: Commit[]; lastTag: string | null }>,
-  ): Promise<string[]> {
+  ): Promise<ChangesRendererResult[]> {
     if (!this.options.render) {
       logger.info("Rendering disabled, skipping");
       return [];
@@ -80,6 +85,7 @@ export class ChangesRenderer {
     logger.info("Changes generation completed", {
       fileCount: renderedPaths.length,
     });
+
     return renderedPaths;
   }
 }

@@ -263695,7 +263695,7 @@ async function generateChangesForModules(moduleResults, getCommitsForModule, rep
         else {
             await updateChangesFile(changesContent, renderedPath, prependPlaceholder);
         }
-        renderedPaths.push(renderedPath);
+        renderedPaths.push({ moduleId: moduleResult.id, path: renderedPath });
     }
     return renderedPaths;
 }
@@ -263755,7 +263755,7 @@ async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot,
     else {
         await updateChangesFile(changesContent, renderedPath, prependPlaceholder);
     }
-    return renderedPath;
+    return { moduleId: moduleResult.id, path: renderedPath };
 }
 
 class ChangesRenderer {
@@ -263868,7 +263868,7 @@ class GitOperations {
             });
             for (const change of modulesWithDeclaredVersions) {
                 const tagName = `${change.name}@${change.to}`;
-                createdTags.push(tagName);
+                createdTags.push({ moduleId: change.id, tag: tagName });
                 logger$1.info("Would create tag (dry run)", { tag: tagName });
             }
             return createdTags;
@@ -263877,7 +263877,7 @@ class GitOperations {
             const tagName = `${change.name}@${change.to}`;
             const message = `Release ${change.name} v${change.to}`;
             await createTag(tagName, message, { cwd: this.options.repoRoot });
-            createdTags.push(tagName);
+            createdTags.push({ moduleId: change.id, tag: tagName });
             logger$1.debug("Tag created", { tag: tagName });
         }
         logger$1.info("Created tags", { count: createdTags.length });
@@ -263887,9 +263887,9 @@ class GitOperations {
             sequential: this.options.sequentialTagPush,
         });
         if (this.options.sequentialTagPush) {
-            for (const tagName of createdTags) {
-                await pushTag(tagName, { cwd: this.options.repoRoot });
-                logger$1.info("Tag pushed to remote", { tag: tagName });
+            for (const { tag } of createdTags) {
+                await pushTag(tag, { cwd: this.options.repoRoot });
+                logger$1.info("Tag pushed to remote", { tag });
             }
         }
         else {
@@ -264084,7 +264084,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "0.14.0";
+const VERSION$7 = "1.0.0";
 const PACKAGE_NAME$1 = "@versu/core";
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
@@ -269788,7 +269788,6 @@ class VersuRunner {
     commitAnalyzer;
     versionBumper; // Will be initialized in run()
     versionApplier; // Will be initialized in run()
-    changelogGenerator; // Will be initialized in run()
     gitOperations; // Will be initialized in run()
     adapterIdentifierRegistry;
     adapterMetadataProvider;
@@ -269832,10 +269831,10 @@ class VersuRunner {
             return;
         if (result.bumped) {
             logger$1.info("Modules version updated", {
-                modules: result.changedModules.map((m) => ({
-                    id: m.id,
-                    from: m.from,
-                    to: m.to,
+                modules: result.changedModules.map((module) => ({
+                    id: module.id,
+                    from: module.from,
+                    to: module.to,
                 })),
             });
             if (result.createdTags.length > 0) {
@@ -269934,7 +269933,7 @@ class VersuRunner {
         return { discoveredModules, changedModules };
     }
     async generateChangelogs(changedModules, moduleCommits, multiModule) {
-        this.changelogGenerator = new ChangesRenderer({
+        const changelogGenerator = new ChangesRenderer({
             render: this.options.generateChangelog,
             repoRoot: this.options.repoRoot,
             dryRun: this.options.dryRun,
@@ -269944,11 +269943,11 @@ class VersuRunner {
             provider: this.options.provider,
         });
         // Generate changelogs
-        const changelogPaths = await this.changelogGenerator.render(changedModules, moduleCommits);
+        const changelogPaths = await changelogGenerator.render(changedModules, moduleCommits);
         return changelogPaths;
     }
     async generateReleaseNotes(changedModules, moduleCommits, multiModule) {
-        this.changelogGenerator = new ChangesRenderer({
+        const releaseNotesGenerator = new ChangesRenderer({
             render: this.options.generateReleaseNotes,
             repoRoot: this.options.repoRoot,
             dryRun: this.options.dryRun,
@@ -269957,9 +269956,9 @@ class VersuRunner {
             config: this.config.release,
             provider: this.options.provider,
         });
-        // Generate changelogs
-        const changelogPaths = await this.changelogGenerator.render(changedModules, moduleCommits);
-        return changelogPaths;
+        // Generate release notes
+        const releaseNotesPaths = await releaseNotesGenerator.render(changedModules, moduleCommits);
+        return releaseNotesPaths;
     }
     async commitChangesAndPush(changedModules) {
         // Initialize git operations service
@@ -270204,7 +270203,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "0.14.0";
+const VERSION$6 = "1.0.0";
 const PACKAGE_NAME = "@versu/action";
 
 var github = {};
@@ -274293,9 +274292,9 @@ async function run() {
         coreExports.setOutput('bumped', result.bumped.toString());
         coreExports.setOutput('discovered-modules', JSON.stringify(result.discoveredModules));
         coreExports.setOutput('changed-modules', JSON.stringify(result.changedModules));
-        coreExports.setOutput('created-tags', result.createdTags.join(','));
-        coreExports.setOutput('changelog-paths', result.changelogPaths.join(','));
-        coreExports.setOutput('release-notes-paths', result.releaseNotesPaths.join(','));
+        coreExports.setOutput('created-tags', JSON.stringify(result.createdTags));
+        coreExports.setOutput('changelog-paths', JSON.stringify(result.changelogPaths));
+        coreExports.setOutput('release-notes-paths', JSON.stringify(result.releaseNotesPaths));
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);

@@ -68,11 +68,11 @@ outputs:
   changed-modules:
     description: 'JSON array of { name, from, to }'
   created-tags:
-    description: 'List of created tags'
+    description: 'JSON array of { moduleId, tag } of created tags'
   changelog-paths:
-    description: 'Generated changelog files'
+    description: 'JSON array of { moduleId, path } of generated changelog files'
   release-notes-paths:
-    description: 'Generated release notes files'
+    description: 'JSON array of { moduleId, path } of generated release notes files'
 runs:
   using: 'node20'
   main: 'dist/index.js'
