@@ -7,6 +7,7 @@ import {
   hasChangesToCommit,
   createTag,
   pushTags,
+  pushTag,
 } from "../git/index.js";
 
 export type GitOperationsOptions = {
@@ -15,6 +16,9 @@ export type GitOperationsOptions = {
   repoRoot: string;
   dryRun: boolean;
   isTemporaryVersion: boolean;
+  sequentialTagPush: boolean;
+  commitReleaseNotes: boolean;
+  releaseNotesFilename: string;
 };
 
 export class GitOperations {
@@ -40,7 +44,17 @@ export class GitOperations {
 
     try {
       // Add all changed files to staging area
-      await addChangedFiles({ cwd: this.options.repoRoot });
+      const ignorePaths: string[] = [];
+
+      if (!this.options.commitReleaseNotes) {
+        logger.info("Skipping commit of release notes", {
+          filename: this.options.releaseNotesFilename,
+        });
+
+        ignorePaths.push(`**/${this.options.releaseNotesFilename}`);
+      }
+
+      await addChangedFiles({ cwd: this.options.repoRoot }, ignorePaths);
 
       // Check if there are any changes to commit
       const hasChanges = await hasChangesToCommit({
@@ -113,15 +127,27 @@ export class GitOperations {
       const tagName = `${change.name}@${change.to}`;
       const message = `Release ${change.name} v${change.to}`;
 
-      createTag(tagName, message, { cwd: this.options.repoRoot });
+      await createTag(tagName, message, { cwd: this.options.repoRoot });
       createdTags.push(tagName);
       logger.debug("Tag created", { tag: tagName });
     }
     logger.info("Created tags", { count: createdTags.length });
 
     // Push tags
-    logger.info("Pushing tags");
-    pushTags({ cwd: this.options.repoRoot });
+    logger.info("Pushing tags to remote", {
+      tagCount: createdTags.length,
+      sequential: this.options.sequentialTagPush,
+    });
+
+    if (this.options.sequentialTagPush) {
+      for (const tagName of createdTags) {
+        await pushTag(tagName, { cwd: this.options.repoRoot });
+        logger.info("Tag pushed to remote", { tag: tagName });
+      }
+    } else {
+      await pushTags({ cwd: this.options.repoRoot });
+    }
+
     logger.info("Tags pushed to remote", { tagCount: createdTags.length });
 
     return createdTags;

@@ -73,6 +73,15 @@ export default class Run extends Command {
       description: "Run without writing or pushing changes",
       default: false,
     }),
+    "sequential-tag-push": Flags.boolean({
+      description:
+        "Push tags sequentially instead of all at once (useful for large repositories or certain CI environments)",
+      default: false,
+    }),
+    "commit-release-notes": Flags.boolean({
+      description: "Include release notes in the commit when pushing changes",
+      default: false,
+    }),
     adapter: Flags.string({
       description:
         "Language adapter (e.g., gradle). Auto-detected if not provided",
@@ -117,6 +126,8 @@ export default class Run extends Command {
         pushChanges: flags["push-changes"],
         adapter: flags.adapter,
         dryRun: flags["dry-run"],
+        sequentialTagPush: flags["sequential-tag-push"],
+        commitReleaseNotes: flags["commit-release-notes"],
         changelogFilename: flags["changelog-filename"],
         releaseNotesFilename: flags["release-notes-filename"],
         fromRef: flags["from-ref"],

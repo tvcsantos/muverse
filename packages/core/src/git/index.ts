@@ -438,6 +438,26 @@ export async function createTag(
 }
 
 /**
+ * Pushes a specific git tag to the configured remote repository.
+ * @param tagName - The name of the tag to push
+ * @param options - Git operation options
+ * @returns Promise that resolves when the tag is successfully pushed
+ * @throws {Error} If push fails (no remote, authentication, network, etc.)
+ */
+export async function pushTag(
+  tagName: string,
+  options: GitOptions = {},
+): Promise<void> {
+  const cwd = options.cwd || process.cwd();
+
+  try {
+    await execa("git", ["push", "origin", tagName], { cwd });
+  } catch (error) {
+    throw new Error(`Failed to push tag ${tagName}: ${error}`);
+  }
+}
+
+/**
  * Pushes all local tags to the configured remote repository.
  * Only pushes tags that don't exist on remote. Does NOT push commits.
  * @param options - Git operation options
@@ -645,31 +665,52 @@ export async function getCurrentCommitShortSha(
 /**
  * Stages all changed files in the working directory for the next commit.
  *
- * This function executes `git add .` which stages:
- * - All modified tracked files
- * - All new untracked files
- * - All deleted files
+ * This function executes git add with optional pathspec exclusions to stage files
+ * while excluding specified paths. Supports glob expressions for pattern matching.
  *
- * **Warning**: This stages **everything** in the working directory. Use with caution
- * in interactive environments. For selective staging, use git commands directly.
+ * Warning: Without exclusions, this stages everything in the working directory.
+ * Use with caution in interactive environments.
  *
  * @param options - Git operation options, primarily for specifying working directory.
+ * @param ignorePaths - Optional array of file paths or glob patterns to exclude from staging.
+ *                      Paths should be relative to the repository root.
+ *                      Supports glob expressions:
+ *                      - *.log - All log files in root
+ *                      - dist/** - All files under dist directory
+ *                      - build/*.js - JavaScript files in build root
+ *                      - src/*\/test - test directories anywhere under src
  *
- * @returns Promise that resolves when all files are successfully staged.
+ * @returns Promise that resolves when all files are successfully staged (excluding ignored paths).
  *
- * @throws {Error} If git add command fails:
- *                 - Not in a git repository
- *                 - Permissions issues
- *                 - Invalid .gitignore patterns
+ * @throws {Error} If git add command fails
  */
-export async function addChangedFiles(options: GitOptions = {}): Promise<void> {
+export async function addChangedFiles(
+  options: GitOptions = {},
+  ignorePaths: string[] = [],
+): Promise<void> {
   // Resolve working directory
   const cwd = options.cwd || process.cwd();
 
   try {
-    // Stage all changes in the working directory
-    // '.': Current directory and all subdirectories
-    await execa("git", ["add", "."], { cwd });
+    // Build git add command with optional pathspec exclusions
+    // Uses git's :(exclude)path syntax for efficient pattern exclusion
+    const args = ["add", "--"];
+
+    // Add root path
+    args.push(".");
+
+    // Add each exclusion pattern using git's pathspec syntax
+    // :(exclude)path tells git to ignore files matching that path
+    for (const ignorePath of ignorePaths) {
+      if (ignorePath && ignorePath !== ".") {
+        args.push(`:(exclude)${ignorePath}`);
+      }
+    }
+
+    logger.debug("Executing git command", { command: `git ${args.join(" ")}` });
+
+    // Stage all changes while respecting exclusion patterns
+    await execa("git", args, { cwd });
   } catch (error) {
     // Wrap error with context
     throw new Error(`Failed to add changed files: ${error}`);

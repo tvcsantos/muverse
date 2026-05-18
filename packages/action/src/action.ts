@@ -30,6 +30,7 @@ export async function run(): Promise<void> {
     const pushChanges = parseBooleanInput(core.getInput('push-changes'));
     const generateChangelog = parseBooleanInput(core.getInput('generate-changelog') || 'false');
     const generateReleaseNotes = parseBooleanInput(core.getInput('generate-release-notes') || 'false');
+    const commitReleaseNotes = parseBooleanInput(core.getInput('commit-release-notes') || 'false');
     const changelogFilename = core.getInput('changelog-filename') || 'CHANGELOG.md';
     const releaseNotesFilename = core.getInput('release-notes-filename') || 'RELEASE.md';
 
@@ -53,6 +54,10 @@ export async function run(): Promise<void> {
       generateReleaseNotes,
       pushChanges,
       dryRun,
+      // Always enable sequential tag push in GitHub Actions
+      // to avoid issues with large repositories or CI environments
+      sequentialTagPush: true,
+      commitReleaseNotes,
       adapter,
       changelogFilename,
       releaseNotesFilename,

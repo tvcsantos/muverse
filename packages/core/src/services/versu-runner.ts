@@ -40,6 +40,8 @@ export type RunnerOptions = {
   readonly generateReleaseNotes: boolean;
   readonly pushChanges: boolean;
   readonly dryRun: boolean;
+  readonly sequentialTagPush: boolean;
+  readonly commitReleaseNotes: boolean;
   readonly adapter?: string;
   readonly changelogFilename?: string;
   readonly releaseNotesFilename?: string;
@@ -342,6 +344,9 @@ export class VersuRunner {
       dryRun: this.options.dryRun,
       isTemporaryVersion:
         this.options.prereleaseMode || this.options.appendSnapshot,
+      sequentialTagPush: this.options.sequentialTagPush,
+      commitReleaseNotes: this.options.commitReleaseNotes,
+      releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
     };
     this.gitOperations = new GitOperations(gitOperationsOptions);
 

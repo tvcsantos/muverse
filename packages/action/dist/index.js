@@ -37226,6 +37226,22 @@ async function createTag(tagName, message, options = {}) {
     }
 }
 /**
+ * Pushes a specific git tag to the configured remote repository.
+ * @param tagName - The name of the tag to push
+ * @param options - Git operation options
+ * @returns Promise that resolves when the tag is successfully pushed
+ * @throws {Error} If push fails (no remote, authentication, network, etc.)
+ */
+async function pushTag(tagName, options = {}) {
+    const cwd = options.cwd || process.cwd();
+    try {
+        await execa("git", ["push", "origin", tagName], { cwd });
+    }
+    catch (error) {
+        throw new Error(`Failed to push tag ${tagName}: ${error}`);
+    }
+}
+/**
  * Pushes all local tags to the configured remote repository.
  * Only pushes tags that don't exist on remote. Does NOT push commits.
  * @param options - Git operation options
@@ -37338,30 +37354,44 @@ async function isWorkingDirectoryClean(options = {}) {
 /**
  * Stages all changed files in the working directory for the next commit.
  *
- * This function executes `git add .` which stages:
- * - All modified tracked files
- * - All new untracked files
- * - All deleted files
+ * This function executes git add with optional pathspec exclusions to stage files
+ * while excluding specified paths. Supports glob expressions for pattern matching.
  *
- * **Warning**: This stages **everything** in the working directory. Use with caution
- * in interactive environments. For selective staging, use git commands directly.
+ * Warning: Without exclusions, this stages everything in the working directory.
+ * Use with caution in interactive environments.
  *
  * @param options - Git operation options, primarily for specifying working directory.
+ * @param ignorePaths - Optional array of file paths or glob patterns to exclude from staging.
+ *                      Paths should be relative to the repository root.
+ *                      Supports glob expressions:
+ *                      - *.log - All log files in root
+ *                      - dist/** - All files under dist directory
+ *                      - build/*.js - JavaScript files in build root
+ *                      - src/*\/test - test directories anywhere under src
  *
- * @returns Promise that resolves when all files are successfully staged.
+ * @returns Promise that resolves when all files are successfully staged (excluding ignored paths).
  *
- * @throws {Error} If git add command fails:
- *                 - Not in a git repository
- *                 - Permissions issues
- *                 - Invalid .gitignore patterns
+ * @throws {Error} If git add command fails
  */
-async function addChangedFiles(options = {}) {
+async function addChangedFiles(options = {}, ignorePaths = []) {
     // Resolve working directory
     const cwd = options.cwd || process.cwd();
     try {
-        // Stage all changes in the working directory
-        // '.': Current directory and all subdirectories
-        await execa("git", ["add", "."], { cwd });
+        // Build git add command with optional pathspec exclusions
+        // Uses git's :(exclude)path syntax for efficient pattern exclusion
+        const args = ["add", "--"];
+        // Add root path
+        args.push(".");
+        // Add each exclusion pattern using git's pathspec syntax
+        // :(exclude)path tells git to ignore files matching that path
+        for (const ignorePath of ignorePaths) {
+            if (ignorePath && ignorePath !== ".") {
+                args.push(`:(exclude)${ignorePath}`);
+            }
+        }
+        logger$1.debug("Executing git command", { command: `git ${args.join(" ")}` });
+        // Stage all changes while respecting exclusion patterns
+        await execa("git", args, { cwd });
     }
     catch (error) {
         // Wrap error with context
@@ -263783,7 +263813,14 @@ class GitOperations {
         logger$1.info("Committing and pushing changes");
         try {
             // Add all changed files to staging area
-            await addChangedFiles({ cwd: this.options.repoRoot });
+            const ignorePaths = [];
+            if (!this.options.commitReleaseNotes) {
+                logger$1.info("Skipping commit of release notes", {
+                    filename: this.options.releaseNotesFilename,
+                });
+                ignorePaths.push(`**/${this.options.releaseNotesFilename}`);
+            }
+            await addChangedFiles({ cwd: this.options.repoRoot }, ignorePaths);
             // Check if there are any changes to commit
             const hasChanges = await hasChangesToCommit({
                 cwd: this.options.repoRoot,
@@ -263839,14 +263876,25 @@ class GitOperations {
         for (const change of modulesWithDeclaredVersions) {
             const tagName = `${change.name}@${change.to}`;
             const message = `Release ${change.name} v${change.to}`;
-            createTag(tagName, message, { cwd: this.options.repoRoot });
+            await createTag(tagName, message, { cwd: this.options.repoRoot });
             createdTags.push(tagName);
             logger$1.debug("Tag created", { tag: tagName });
         }
         logger$1.info("Created tags", { count: createdTags.length });
         // Push tags
-        logger$1.info("Pushing tags");
-        pushTags({ cwd: this.options.repoRoot });
+        logger$1.info("Pushing tags to remote", {
+            tagCount: createdTags.length,
+            sequential: this.options.sequentialTagPush,
+        });
+        if (this.options.sequentialTagPush) {
+            for (const tagName of createdTags) {
+                await pushTag(tagName, { cwd: this.options.repoRoot });
+                logger$1.info("Tag pushed to remote", { tag: tagName });
+            }
+        }
+        else {
+            await pushTags({ cwd: this.options.repoRoot });
+        }
         logger$1.info("Tags pushed to remote", { tagCount: createdTags.length });
         return createdTags;
     }
@@ -264036,7 +264084,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "0.13.0";
+const VERSION$7 = "0.14.0";
 const PACKAGE_NAME$1 = "@versu/core";
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
@@ -269921,6 +269969,9 @@ class VersuRunner {
             repoRoot: this.options.repoRoot,
             dryRun: this.options.dryRun,
             isTemporaryVersion: this.options.prereleaseMode || this.options.appendSnapshot,
+            sequentialTagPush: this.options.sequentialTagPush,
+            commitReleaseNotes: this.options.commitReleaseNotes,
+            releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
         };
         this.gitOperations = new GitOperations(gitOperationsOptions);
         // Commit and push changes
@@ -270153,7 +270204,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "0.13.0";
+const VERSION$6 = "0.14.0";
 const PACKAGE_NAME = "@versu/action";
 
 var github = {};
@@ -274203,6 +274254,7 @@ async function run() {
         const pushChanges = parseBooleanInput(coreExports.getInput('push-changes'));
         const generateChangelog = parseBooleanInput(coreExports.getInput('generate-changelog') || 'false');
         const generateReleaseNotes = parseBooleanInput(coreExports.getInput('generate-release-notes') || 'false');
+        const commitReleaseNotes = parseBooleanInput(coreExports.getInput('commit-release-notes') || 'false');
         const changelogFilename = coreExports.getInput('changelog-filename') || 'CHANGELOG.md';
         const releaseNotesFilename = coreExports.getInput('release-notes-filename') || 'RELEASE.md';
         let fromRef;
@@ -274224,6 +274276,10 @@ async function run() {
             generateReleaseNotes,
             pushChanges,
             dryRun,
+            // Always enable sequential tag push in GitHub Actions
+            // to avoid issues with large repositories or CI environments
+            sequentialTagPush: true,
+            commitReleaseNotes,
             adapter,
             changelogFilename,
             releaseNotesFilename,
