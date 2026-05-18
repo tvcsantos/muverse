@@ -56,6 +56,9 @@ export class GitOperations {
           filename: this.options.releaseNotesFilename,
         });
 
+        // Add both root and recursive variants so git pathspec exclusions
+        // cover RELEASE.md in repository root and any subdirectories.
+        ignorePaths.push(this.options.releaseNotesFilename);
         ignorePaths.push(`**/${this.options.releaseNotesFilename}`);
       }
 

@@ -263818,6 +263818,9 @@ class GitOperations {
                 logger$1.info("Skipping commit of release notes", {
                     filename: this.options.releaseNotesFilename,
                 });
+                // Add both root and recursive variants so git pathspec exclusions
+                // cover RELEASE.md in repository root and any subdirectories.
+                ignorePaths.push(this.options.releaseNotesFilename);
                 ignorePaths.push(`**/${this.options.releaseNotesFilename}`);
             }
             await addChangedFiles({ cwd: this.options.repoRoot }, ignorePaths);
@@ -264084,7 +264087,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "1.0.0";
+const VERSION$7 = "1.0.1";
 const PACKAGE_NAME$1 = "@versu/core";
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
@@ -270203,7 +270206,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "1.0.0";
+const VERSION$6 = "1.0.1";
 const PACKAGE_NAME = "@versu/action";
 
 var github = {};
