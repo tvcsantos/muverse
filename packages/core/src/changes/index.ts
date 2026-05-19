@@ -138,6 +138,9 @@ export async function generateChangesForModules(
       {
         version: version,
         previousTag: previousTag,
+        previousTagVersion: previousTag
+          ? parseTagName(previousTag).version
+          : undefined,
         currentTag: currentTag,
         linkCompare: previousTag && currentTag ? true : false,
         ...contextRepository,

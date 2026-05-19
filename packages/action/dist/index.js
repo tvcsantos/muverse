@@ -256958,7 +256958,7 @@ function transform$1(commit, context) {
     const typeMap = {
         feat: "✨ Features",
         fix: "🐛 Bug Fixes",
-        doc: "📝 Documentation",
+        docs: "📝 Documentation",
         perf: "⚡️ Performance",
         refactor: "♻️ Refactor",
         style: "🎨 Styling",
@@ -263679,6 +263679,9 @@ async function generateChangesForModules(moduleResults, getCommitsForModule, rep
         const changesContent = await writeChangelogString(commits, {
             version: version,
             previousTag: previousTag,
+            previousTagVersion: previousTag
+                ? parseTagName(previousTag).version
+                : undefined,
             currentTag: currentTag,
             linkCompare: previousTag && currentTag ? true : false,
             ...contextRepository,
@@ -264087,7 +264090,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "1.0.1";
+const VERSION$7 = "1.0.2";
 const PACKAGE_NAME$1 = "@versu/core";
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
@@ -270206,7 +270209,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "1.0.1";
+const VERSION$6 = "1.0.2";
 const PACKAGE_NAME = "@versu/action";
 
 var github = {};

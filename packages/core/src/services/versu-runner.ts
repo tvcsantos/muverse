@@ -13,7 +13,11 @@ import {
   ModuleChangeResult,
 } from "./version-applier.js";
 import { ChangesRenderer, ChangesRendererResult } from "./changes-renderer.js";
-import { CreatedTagResult, GitOperations, GitOperationsOptions } from "./git-operations.js";
+import {
+  CreatedTagResult,
+  GitOperations,
+  GitOperationsOptions,
+} from "./git-operations.js";
 import { AdapterMetadata } from "./adapter-identifier.js";
 import { AdapterMetadataProvider } from "./adapter-metadata-provider.js";
 import { AdapterIdentifierRegistry } from "./adapter-identifier-registry.js";

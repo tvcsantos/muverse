@@ -35,7 +35,7 @@ function transform(commit: Commit, context: Context<Commit>) {
   const typeMap: Record<string, string> = {
     feat: "✨ Features",
     fix: "🐛 Bug Fixes",
-    doc: "📝 Documentation",
+    docs: "📝 Documentation",
     perf: "⚡️ Performance",
     refactor: "♻️ Refactor",
     style: "🎨 Styling",
