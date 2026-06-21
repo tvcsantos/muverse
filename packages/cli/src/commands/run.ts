@@ -21,7 +21,6 @@ export default class Run extends Command {
   };
 
   static override flags = {
-    version: Flags.version({ char: "v" }),
     "prerelease-mode": Flags.boolean({
       description: "Generate pre-release versions instead of final versions",
       default: false,

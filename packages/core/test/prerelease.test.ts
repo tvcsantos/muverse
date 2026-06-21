@@ -68,9 +68,7 @@ describe('Timestamp-based Prerelease IDs', () => {
     });
 
     it('should use current time when no timestamp provided', () => {
-      const before = Date.now();
       const result = generateTimestampPrereleaseId('alpha');
-      const after = Date.now();
       
       // Just check that it has the right format
       expect(result).toMatch(/^alpha\.\d{8}\.\d{4}$/);

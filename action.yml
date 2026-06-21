@@ -77,5 +77,5 @@ outputs:
   release-notes-paths:
     description: 'JSON array of { moduleId, path } of generated release notes files'
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'packages/action/dist/index.js'

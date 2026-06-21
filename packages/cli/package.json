@@ -1,6 +1,6 @@
 {
   "name": "@versu/cli",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Versu (CLI)",
   "type": "module",
   "main": "dist/index.js",
@@ -8,13 +8,18 @@
     "versu": "./bin/run.js"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json --outDir dist",
+    "build": "shx rm -rf dist && tsc -b",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "npm run lint",
+    "prepack": "oclif manifest && oclif readme",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts"
+    "version": "oclif readme && git add README.md"
   },
   "keywords": [
+    "oclif",
     "versu",
     "cli",
     "semantic-versioning",
@@ -34,38 +39,50 @@
   },
   "homepage": "https://github.com/versuhq/versu#readme",
   "files": [
-    "dist"
+    "./bin",
+    "./dist",
+    "./oclif.manifest.json"
   ],
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@oclif/core": "^4.8.0",
-    "@versu/core": "^1.0.2",
+    "@oclif/core": "^4.11.8",
+    "@oclif/plugin-autocomplete": "^3.2.50",
+    "@oclif/plugin-commands": "^4.1.59",
+    "@oclif/plugin-help": "^6.2.52",
+    "@oclif/plugin-not-found": "^3.2.88",
+    "@oclif/plugin-search": "^1.2.50",
+    "@oclif/plugin-version": "^2.2.49",
+    "@oclif/plugin-warn-if-update-available": "^3.1.65",
+    "@versu/core": "^2.0.0",
     "chalk": "^5.6.2",
-    "oclif": "^4.14.0",
-    "ora": "^9.3.0"
+    "debug": "^4.4.3",
+    "ora": "^9.4.0"
   },
   "devDependencies": {
-    "@oclif/dev-cli": "^1.26.10",
-    "@types/debug": "^4.1.12",
-    "@types/node": "^20.19.23",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
-    "prettier": "^3.1.1",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.1.0"
+    "@oclif/test": "^4.1.19",
+    "@types/debug": "^4.1.13",
+    "@types/node": "^24.13.2",
+    "oclif": "^4.23.16",
+    "shx": "^0.3.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "oclif": {
     "bin": "versu",
     "dirname": "versu",
-    "topicSeparator": " ",
-    "plugins": [],
     "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-not-found",
+      "@oclif/plugin-commands",
+      "@oclif/plugin-search",
+      "@oclif/plugin-version",
+      "@oclif/plugin-autocomplete"
+    ],
+    "topicSeparator": " ",
     "topics": {
       "plugin": {
         "description": "Manage Versu plugins"

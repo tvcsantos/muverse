@@ -68,7 +68,7 @@ export async function getCommitsSinceLastTag(
       excludePaths,
     );
     return { commits, lastTag };
-  } catch (error) {
+  } catch (_error) {
     // If tag lookup fails for any reason, fall back to all commits
     // This ensures we always have commit history for version determination
     const commits = await getCommitsInRange(
@@ -346,7 +346,7 @@ export async function getLastTagForModule(
       // This typically means it's a new repository or no releases yet
       return null;
     }
-  } catch (error) {
+  } catch (_error) {
     // Catch-all error handler: return null if any unexpected error occurs
     // This makes the function non-throwing, which is safer for version calculations
     return null;
@@ -401,7 +401,7 @@ export async function getAllTags(options: GitOptions = {}): Promise<GitTag[]> {
           version,
         };
       });
-  } catch (error) {
+  } catch (_error) {
     // Non-throwing: return empty array if git command fails
     // This could happen if not in a git repository or no tags exist
     return [];
@@ -574,7 +574,7 @@ export async function isWorkingDirectoryClean(
     // Empty output means clean working directory
     // Any output indicates changes (modified, untracked, staged, etc.)
     return stdout.trim() === "";
-  } catch (error) {
+  } catch (_error) {
     // On error, assume directory is not clean (safe default)
     // This could happen if not a git repo, or permissions issue
     return false;

@@ -308,7 +308,7 @@ npm publish --workspace packages/core --access public
 
 ## Requirements
 
-- **Node.js**: >= 20
+- **Node.js**: >= 24
 - **TypeScript**: >= 5.0 (if using TypeScript)
 
 ## License

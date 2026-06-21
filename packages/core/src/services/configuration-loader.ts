@@ -84,7 +84,6 @@ const defaultMergeOptions = {
  * @param userConfig - User-provided configuration to merge with defaults
  * @returns Merged configuration with user values overriding defaults
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergeWithDefaults<T>(userConfig: Partial<T>): T {
   return deepmerge(DEFAULT_CONFIG, userConfig, defaultMergeOptions);
 }
