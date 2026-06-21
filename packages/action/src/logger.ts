@@ -16,10 +16,10 @@ function formatElement(element: unknown): string {
  * Combines a log message with an optional structured context object into a
  * human-readable string, choosing the most compact layout that remains legible:
  *
- * - **No context** — returns the message as-is.
- * - **Inline** — `message (key=value …)` when there are ≤ 3 non-array keys and
+ * - **No context** - returns the message as-is.
+ * - **Inline** - `message (key=value …)` when there are ≤ 3 non-array keys and
  *   the total serialized length is under 80 characters.
- * - **Multi-line** — indented `key: value` lines when the context is large or
+ * - **Multi-line** - indented `key: value` lines when the context is large or
  *   contains array values.
  *
  * Array values are always rendered as a bulleted list; empty arrays become `none`.

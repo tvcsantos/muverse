@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    passWithNoTests: true,
+
     env: {
       GITHUB_ACTION_REPOSITORY: 'versuhq/versu'
     },

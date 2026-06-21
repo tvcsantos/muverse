@@ -8,7 +8,7 @@
 
 _Compose the epic of your code, one release at a time._
 
-**Versu** is an intelligent versioning automation tool that eliminates manual version management in multi-module projects. By leveraging [Conventional Commits](https://conventionalcommits.org/), Versu automatically analyzes your commit history, determines semantic version bumps, manages dependency cascades, and generates changelogs — all without developer intervention!
+**Versu** is an intelligent versioning automation tool that eliminates manual version management in multi-module projects. By leveraging [Conventional Commits](https://conventionalcommits.org/), Versu automatically analyzes your commit history, determines semantic version bumps, manages dependency cascades, and generates changelogs - all without developer intervention!
 
 Whether you're working on a monorepo with dozens of interdependent modules or a simple single-module project, Versu adapts to your workflow. Use it as a library in your custom tools, as a CLI in your terminal, or as a GitHub Action in your CI/CD pipeline. With its extensible plugin architecture, Versu supports any build system or language ecosystem.
 

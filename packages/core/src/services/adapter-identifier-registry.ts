@@ -37,7 +37,7 @@ export class AdapterIdentifierRegistry {
         if (result) {
           return identifier;
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue to the next identifier if this one fails
         // This ensures robustness - one faulty adapter won't break discovery
         continue;

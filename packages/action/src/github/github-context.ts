@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
-import { Context } from "@actions/github/lib/context";
+
+type Context = typeof github.context;
 
 /** GitHub event names that represent pull request activity. */
 const prEvents = [
@@ -21,7 +22,7 @@ export interface ExtendedContext extends Context {
   /** Returns `true` and narrows the type to {@link PullRequestContext} when the
    *  triggering event is a pull request event. */
   isPullRequest(): this is PullRequestContext;
-  /** Returns the most relevant SHA for the event — uses the PR head SHA when
+  /** Returns the most relevant SHA for the event - uses the PR head SHA when
    *  running in a pull request context, otherwise falls back to `context.sha`. */
   getSha(): string;
   /** Returns the current branch or tag name with the `refs/heads/` / `refs/tags/`
@@ -60,7 +61,7 @@ export interface PullRequestContext extends ExtendedContext {
  * @returns The same object cast to {@link ExtendedContext}.
  */
 export function extendContext(context: Context): ExtendedContext {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = <any>context;
 
   const isPR = (): boolean => prEvents.includes(context.eventName);

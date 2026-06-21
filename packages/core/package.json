@@ -1,20 +1,18 @@
 {
   "name": "@versu/core",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Versu (Core Library)",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
     "prebuild": "node scripts/generate-version.js",
-    "build": "npm run build:esm",
-    "build:esm": "tsc --project tsconfig.json --outDir dist",
-    "build:cjs": "tsc --project tsconfig.cjs.json --outDir dist",
+    "build": "tsc --project tsconfig.json --outDir dist",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src/**/*.ts",
@@ -45,30 +43,28 @@
   ],
   "types": "dist/index.d.ts",
   "dependencies": {
-    "conventional-changelog-writer": "^8.2.0",
-    "conventional-commits-parser": "^6.2.1",
-    "cosmiconfig": "^9.0.0",
+    "conventional-changelog-writer": "^8.4.0",
+    "conventional-commits-parser": "^6.4.0",
+    "cosmiconfig": "^9.0.2",
     "deepmerge": "^4.3.1",
     "execa": "^9.6.1",
     "fast-glob": "^3.3.3",
-    "handlebars": "^4.7.8",
-    "semver": "^7.7.4",
-    "typescript": "^5.3.3",
-    "yaml": "^2.3.4",
-    "zod": "^4.1.12"
+    "handlebars": "^4.7.9",
+    "semver": "^7.8.5",
+    "typescript": "^6.0.3",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^20.19.23",
+    "@types/node": "^24.13.2",
     "@types/semver": "^7.7.1",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "cpx": "^1.5.0",
-    "eslint": "^8.56.0",
-    "prettier": "^3.1.1",
-    "vitest": "^1.1.0"
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.4",
+    "vitest": "^4.1.9"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }
