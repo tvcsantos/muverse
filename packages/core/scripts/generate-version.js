@@ -10,7 +10,7 @@ const versionFilePath = join(__dirname, '../src/utils/version.ts');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
 const packageName = packageJson.name;
-const authors = [];
+let authors = [];
 
 const localAuthors = packageJson.authors;
 if (Array.isArray(localAuthors)) {

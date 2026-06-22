@@ -265275,7 +265275,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "3.0.0";
+const VERSION$7 = "3.0.1";
 const PACKAGE_NAME$1 = "@versu/core";
 const AUTHORS = ["tvcsantos"];
 
@@ -271989,7 +271989,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "3.0.0";
+const VERSION$6 = "3.0.1";
 const PACKAGE_NAME = "@versu/action";
 
 class Context {
