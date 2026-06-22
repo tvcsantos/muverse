@@ -20,7 +20,9 @@ export class AdapterIdentifierRegistry {
    * @param identifiers - Array of adapter identifiers to register
    */
   constructor(private readonly identifiers: AdapterIdentifier[]) {
-    this.identifiersMap = new Map(identifiers.map((id) => [id.metadata.id, id]));
+    this.identifiersMap = new Map(
+      identifiers.map((id) => [id.metadata.id, id]),
+    );
     this.supportedAdapters = Array.from(this.identifiersMap.keys());
   }
 

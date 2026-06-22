@@ -1,15 +1,19 @@
-import * as path from "path"
-import * as fs from "fs/promises"
-import { Module, ProjectInformation, RawProjectInformation } from "../adapters/project-information.js";
+import * as path from "path";
+import * as fs from "fs/promises";
+import {
+  Module,
+  ProjectInformation,
+  RawProjectInformation,
+} from "../adapters/project-information.js";
 import { createInitialVersion, parseSemVer } from "../semver/index.js";
 
 export function getProjectInformationPath(configDirectory: string): string {
   return path.resolve(path.join(configDirectory, "project-information.json"));
 }
 
-export async function readRawProjectInformation<T extends RawProjectInformation>(
-  configDirectory: string,
-): Promise<T> {
+export async function readRawProjectInformation<
+  T extends RawProjectInformation,
+>(configDirectory: string): Promise<T> {
   const projectInformationPath = getProjectInformationPath(configDirectory);
   const content = await fs.readFile(projectInformationPath, "utf8");
   return JSON.parse(content) as T;

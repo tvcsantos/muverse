@@ -11,12 +11,15 @@ export type PluginContract = {
   readonly adapters: AdapterPluginContract[];
 };
 
-export type OrderedPluginContract = PluginContract & Ordered
+export type OrderedPluginContract = PluginContract & Ordered;
 
 export type AdapterPluginContract = {
   readonly id: string;
   adapterIdentifier: (configDirectory: string) => Promise<AdapterIdentifier>;
-  moduleSystemFactory: (repoRoot: string, configDirectory: string) => Promise<ModuleSystemFactory>;
+  moduleSystemFactory: (
+    repoRoot: string,
+    configDirectory: string,
+  ) => Promise<ModuleSystemFactory>;
 };
 
 export type PluginInformation = {
