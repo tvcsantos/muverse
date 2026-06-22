@@ -1,6 +1,6 @@
 {
   "name": "@versu/action",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Versu (GitHub Action)",
   "type": "module",
   "main": "dist/index.js",
@@ -43,7 +43,7 @@
     "@actions/core": "^3.0.1",
     "@actions/exec": "^3.0.0",
     "@actions/github": "^9.1.1",
-    "@versu/core": "^3.0.2"
+    "@versu/core": "^3.0.3"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",

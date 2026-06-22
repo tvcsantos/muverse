@@ -1,6 +1,6 @@
 {
   "name": "@versu/cli",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Versu (CLI)",
   "type": "module",
   "main": "dist/index.js",
@@ -53,7 +53,7 @@
     "@oclif/plugin-search": "^1.2.50",
     "@oclif/plugin-version": "^2.2.49",
     "@oclif/plugin-warn-if-update-available": "^3.1.65",
-    "@versu/core": "^3.0.2",
+    "@versu/core": "^3.0.3",
     "chalk": "^5.6.2",
     "debug": "^4.4.3",
     "ora": "^9.4.0"

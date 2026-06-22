@@ -265275,7 +265275,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "3.0.2";
+const VERSION$7 = "3.0.3";
 const PACKAGE_NAME$1 = "@versu/core";
 const AUTHORS = ["tvcsantos"];
 
@@ -271464,7 +271464,7 @@ function getProjectInformationFromRawData(projectInformation) {
         modules.set(moduleId, module);
     }
     if (!rootModule) {
-        throw new Error("No root module found. Maven project must include a root pom.xml.");
+        throw new Error("No root module found. Project must include a root.");
     }
     return {
         moduleIds,
@@ -271487,7 +271487,7 @@ class ManualModuleDetector {
     }
     async detect() {
         const rawProjectInformation = await readRawProjectInformation(this.configDirectory);
-        return getProjectInformationFromRawData(rawProjectInformation);
+        return getProjectInformationFromRawData(rawProjectInformation.data);
     }
 }
 
@@ -271499,7 +271499,7 @@ class ManualVersionUpdateStrategy {
     async writeVersionUpdates(moduleVersions) {
         const rawProjectInformation = await readRawProjectInformation(this.configDirectory);
         for (const [moduleId, newVersion] of moduleVersions) {
-            const module = rawProjectInformation[moduleId];
+            const module = rawProjectInformation.data[moduleId];
             if (!module) {
                 throw new Error(`Module ${moduleId} not found in project information`);
             }
@@ -271989,7 +271989,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "3.0.2";
+const VERSION$6 = "3.0.3";
 const PACKAGE_NAME = "@versu/action";
 
 class Context {

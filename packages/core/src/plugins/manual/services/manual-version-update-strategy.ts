@@ -20,7 +20,7 @@ export class ManualVersionUpdateStrategy implements VersionUpdateStrategy {
 
     for (const [moduleId, newVersion] of moduleVersions) {
       const module: Mutable<RawModule> | undefined =
-        rawProjectInformation[moduleId];
+        rawProjectInformation.data[moduleId];
       if (!module) {
         throw new Error(`Module ${moduleId} not found in project information`);
       }

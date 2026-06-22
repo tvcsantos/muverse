@@ -6,6 +6,7 @@ import {
   type RawProjectInformation,
 } from "../../../adapters/project-information.js";
 import { getProjectInformationFromRawData, readRawProjectInformation } from "../../../services/project-information.js";
+import { Data } from "../../../utils/data.js";
 
 /**
  * Module detector for Manually configured projects.
@@ -19,8 +20,8 @@ export class ManualModuleDetector implements ModuleDetector {
   ) {}
 
   async detect(): Promise<ProjectInformation> {
-    const rawProjectInformation: RawProjectInformation =
+    const rawProjectInformation: Data<RawProjectInformation> =
       await readRawProjectInformation(this.configDirectory);
-    return getProjectInformationFromRawData(rawProjectInformation);
+    return getProjectInformationFromRawData(rawProjectInformation.data);
   }
 }

@@ -6,13 +6,14 @@ import {
   RawProjectInformation,
 } from "../adapters/project-information.js";
 import { createInitialVersion, parseSemVer } from "../semver/index.js";
+import { Data } from "../utils/data.js";
 
 export function getProjectInformationPath(configDirectory: string): string {
   return path.resolve(path.join(configDirectory, "project-information.json"));
 }
 
 export async function readRawProjectInformation<
-  T extends RawProjectInformation,
+  T extends Data<RawProjectInformation>,
 >(configDirectory: string): Promise<T> {
   const projectInformationPath = getProjectInformationPath(configDirectory);
   const content = await fs.readFile(projectInformationPath, "utf8");
@@ -55,9 +56,7 @@ export function getProjectInformationFromRawData(
   }
 
   if (!rootModule) {
-    throw new Error(
-      "No root module found. Maven project must include a root pom.xml.",
-    );
+    throw new Error("No root module found. Project must include a root.");
   }
 
   return {
