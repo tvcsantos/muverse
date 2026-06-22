@@ -1,5 +1,5 @@
-import { type RawProjectInformation } from "../../adapters/project-information";
-import { type AdapterCapabilities } from "../../services/adapter-identifier";
+import { type RawProjectInformation } from "../../adapters/project-information.js";
+import { type AdapterCapabilities } from "../../services/adapter-identifier.js";
 
 export type ManualProjectInformation = RawProjectInformation & {
   capabilities: AdapterCapabilities;

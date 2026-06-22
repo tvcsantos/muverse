@@ -1,7 +1,7 @@
 import * as path from "path"
 import * as fs from "fs/promises"
-import { Module, ProjectInformation, RawProjectInformation } from "../adapters/project-information";
-import { createInitialVersion, parseSemVer } from "../semver";
+import { Module, ProjectInformation, RawProjectInformation } from "../adapters/project-information.js";
+import { createInitialVersion, parseSemVer } from "../semver/index.js";
 
 export function getProjectInformationPath(configDirectory: string): string {
   return path.resolve(path.join(configDirectory, "project-information.json"));
