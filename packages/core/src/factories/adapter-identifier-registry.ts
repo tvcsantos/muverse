@@ -6,14 +6,17 @@ import { AdapterIdentifierRegistry } from "../services/adapter-identifier-regist
  *
  * @returns Configured {@link AdapterIdentifierRegistry} with all available adapters
  */
-export function createAdapterIdentifierRegistry(
+export async function createAdapterIdentifierRegistry(
   plugins: PluginContract[],
-): AdapterIdentifierRegistry {
+  configDirectory: string,
+): Promise<AdapterIdentifierRegistry> {
   // Array of all registered adapter identifiers
   // Order matters: first matching adapter is selected during auto-detection
-  const identifiers = plugins.flatMap((plugin) =>
-    plugin.adapters.map((adapter) => adapter.adapterIdentifier()),
-  );
+  const identifiers = [];
+  const adapters = plugins.flatMap((x) => x.adapters);
+  for (const adapter of adapters) {
+    identifiers.push(await adapter.adapterIdentifier(configDirectory));
+  }
 
   // Create and return the registry with all registered identifiers
   return new AdapterIdentifierRegistry(identifiers);

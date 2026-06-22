@@ -7,19 +7,27 @@ import {
 } from "../services/configuration-validator.js";
 import { findPackagesInNodeModules, getCandidateRoots } from "../utils/node.js";
 import { getPluginPath } from "../utils/plugins.js";
-import { PluginContract, PluginLoader } from "./types.js";
+import {
+  type OrderedPluginContract,
+  type PluginContract,
+  type PluginLoader,
+} from "./types.js";
 import { pluginContractSchema } from "./schema.js";
 import { PLUGIN_PATTERNS } from "./constants.js";
+import { insertSorted } from "../utils/sorting.js";
 
 class DefaultPluginLoader implements PluginLoader {
-  private readonly pluginsMap: Map<string, PluginContract> = new Map();
+  private readonly pluginsMap: Map<string, OrderedPluginContract> = new Map();
+  private readonly orderedPlugins: OrderedPluginContract[];
 
   constructor(
     private readonly pluginValidator: ConfigurationValidator<PluginContract>,
-  ) {}
+  ) {
+    this.orderedPlugins = [];
+  }
 
-  get plugins(): PluginContract[] {
-    return Array.from(this.pluginsMap.values());
+  get plugins(): OrderedPluginContract[] {
+    return this.orderedPlugins;
   }
 
   private async detect(): Promise<void> {
@@ -53,7 +61,7 @@ class DefaultPluginLoader implements PluginLoader {
    * 2. Load ONLY the plugins specified in the whitelist
    * @param pluginNames List of package names (e.g. ['my-plugin-alpha', '@scope/my-plugin-beta'])
    */
-  public async load(pluginNames: string[]): Promise<void> {
+  public async loadByName(pluginNames: string[]): Promise<void> {
     if (pluginNames.length === 0) {
       logger.info(
         "No plugins specified for loading, defaulting to auto-detect",
@@ -75,6 +83,25 @@ class DefaultPluginLoader implements PluginLoader {
         logger.error("Plugin could not be found", { pluginName });
       }
     }
+  }
+
+  loadDirect(plugins: OrderedPluginContract[]): Promise<void> {
+    logger.info("Loading plugins directly", { count: plugins.length });
+
+    for (const plugin of plugins) {
+      logger.debug("Loading plugin directly", { id: plugin.id });
+
+      this.pluginsMap.set(plugin.id, plugin);
+
+      insertSorted(this.orderedPlugins, plugin, pluginOrderFn);
+
+      logger.info(`Plugin loaded`, {
+        name: plugin.name,
+        id: plugin.id,
+        version: plugin.version,
+      });
+    }
+    return Promise.resolve();
   }
 
   /**
@@ -105,7 +132,11 @@ class DefaultPluginLoader implements PluginLoader {
         return false;
       }
 
-      this.pluginsMap.set(plugin.id, plugin);
+      const orderedPlugin = makeOrdered(plugin, HIGHEST_PRECEDENCE);
+
+      this.pluginsMap.set(plugin.id, orderedPlugin);
+
+      insertSorted(this.orderedPlugins, orderedPlugin, pluginOrderFn);
 
       logger.info(`Plugin loaded`, {
         name: plugin.name,
@@ -122,6 +153,16 @@ class DefaultPluginLoader implements PluginLoader {
     return true;
   }
 }
+
+function makeOrdered(p: PluginContract, order: number): OrderedPluginContract {
+  return { ...p, order };
+}
+
+const pluginOrderFn = (a: OrderedPluginContract, b: OrderedPluginContract) =>
+  a.order - b.order;
+
+export const HIGHEST_PRECEDENCE = Number.MIN_VALUE;
+export const LOWEST_PRECEDENCE = Number.MAX_VALUE;
 
 export const pluginLoader = new DefaultPluginLoader(
   ConfigurationValidatorFactory.create<PluginContract>(pluginContractSchema),

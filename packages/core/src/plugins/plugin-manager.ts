@@ -5,7 +5,7 @@ import {
   isGlobalPath,
   uninstallPackage,
 } from "../utils/node.js";
-import { PluginInformation, PluginManager } from "./types.js";
+import { type PluginInformation, type PluginManager } from "./types.js";
 import { PLUGIN_PATTERNS } from "./constants.js";
 
 class DefaultPluginManager implements PluginManager {

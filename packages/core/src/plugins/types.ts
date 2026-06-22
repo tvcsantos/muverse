@@ -1,19 +1,22 @@
 import { AdapterIdentifier } from "../services/adapter-identifier.js";
 import { ModuleSystemFactory } from "../services/module-system-factory.js";
+import { Ordered } from "../utils/ordered.js";
 
 export type PluginContract = {
-  id: string;
-  name: string;
-  description: string;
-  version: string;
-  author: string;
-  adapters: AdapterPluginContract[];
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly version: string;
+  readonly authors: string[];
+  readonly adapters: AdapterPluginContract[];
 };
 
+export type OrderedPluginContract = PluginContract & Ordered
+
 export type AdapterPluginContract = {
-  id: string;
-  adapterIdentifier: () => AdapterIdentifier;
-  moduleSystemFactory: (repoRoot: string) => ModuleSystemFactory;
+  readonly id: string;
+  adapterIdentifier: (configDirectory: string) => Promise<AdapterIdentifier>;
+  moduleSystemFactory: (repoRoot: string, configDirectory: string) => Promise<ModuleSystemFactory>;
 };
 
 export type PluginInformation = {
@@ -23,8 +26,12 @@ export type PluginInformation = {
 };
 
 export interface PluginLoader {
-  get plugins(): PluginContract[];
-  load(pluginNames: string[]): Promise<void>;
+  /**
+   * Returns the plugins already ordered
+   */
+  get plugins(): OrderedPluginContract[];
+  loadByName(pluginNames: string[]): Promise<void>;
+  loadDirect(plugins: OrderedPluginContract[]): Promise<void>;
 }
 
 export interface PluginManager {

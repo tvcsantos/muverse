@@ -33,3 +33,6 @@ export type * from './semver/types.js';
 
 // Utilities
 export * from './utils/index.js';
+
+// Project Information utilities
+export * from './services/project-information.js'

@@ -30,6 +30,8 @@ import { pluginLoader } from "../plugins/plugin-loader.js";
 import { Commit } from "conventional-commits-parser";
 import type { VersuConfigWithDefaults } from "../config/types.js";
 import { configSchemaWithDefaults } from "../config/schema.js";
+import manualPlugin from "../plugins/manual/index.js";
+import { getProjectInformationPath } from "./project-information.js";
 
 export type RunnerOptions = {
   readonly repoRoot: string;
@@ -184,10 +186,14 @@ export class VersuRunner {
   }
 
   private async loadPluginsAndResolveAdapter(): Promise<void> {
-    await pluginLoader.load(this.config.plugins);
+    await pluginLoader.loadByName(this.config.plugins);
+    await pluginLoader.loadDirect([manualPlugin]);
     const plugins = pluginLoader.plugins;
 
-    this.adapterIdentifierRegistry = createAdapterIdentifierRegistry(plugins);
+    this.adapterIdentifierRegistry = await createAdapterIdentifierRegistry(
+      plugins,
+      this.configDirectory,
+    );
 
     this.adapterMetadataProvider = new AdapterMetadataProvider(
       this.adapterIdentifierRegistry,
@@ -200,10 +206,11 @@ export class VersuRunner {
     this.adapter = await this.adapterMetadataProvider.getMetadata();
 
     // Initialize module system factory with resolved adapter
-    this.moduleSystemFactory = createModuleSystemFactory(
+    this.moduleSystemFactory = await createModuleSystemFactory(
       this.adapter.id,
       plugins.flatMap((plugin) => plugin.adapters),
       this.options.repoRoot,
+      this.configDirectory,
     );
   }
 
@@ -211,8 +218,8 @@ export class VersuRunner {
     Map<string, { commits: Commit[]; lastTag: string | null }>
   > {
     // Discover modules and get hierarchy manager
-    const detector = this.moduleSystemFactory.createDetector(
-      path.resolve(path.join(this.configDirectory, "project-information.json")),
+    const detector = await this.moduleSystemFactory.createDetector(
+      getProjectInformationPath(this.configDirectory),
     );
     this.moduleRegistry = new MapModuleRegistry(await detector.detect());
 
@@ -266,7 +273,9 @@ export class VersuRunner {
 
     // Create version manager
     const versionUpdateStrategy =
-      this.moduleSystemFactory.createVersionUpdateStrategy(this.moduleRegistry);
+      await this.moduleSystemFactory.createVersionUpdateStrategy(
+        this.moduleRegistry,
+      );
     this.versionManager = new VersionManager(
       this.moduleRegistry,
       versionUpdateStrategy,

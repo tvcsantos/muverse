@@ -105,11 +105,11 @@ const moduleSystemFactorySchema = z
   .object({
     createDetector: z.function({
       input: [z.string()],
-      output: moduleDetectorSchema,
+      output: z.promise(moduleDetectorSchema),
     }),
     createVersionUpdateStrategy: z.function({
       input: [moduleRegistrySchema],
-      output: versionUpdateStrategySchema,
+      output: z.promise(versionUpdateStrategySchema),
     }),
   })
   .loose();
@@ -118,12 +118,12 @@ const adapterPluginContractSchema = z
   .object({
     id: z.string(),
     adapterIdentifier: z.function({
-      input: [],
-      output: adapterIdentifierSchema,
+      input: [z.string()],
+      output: z.promise(adapterIdentifierSchema),
     }),
     moduleSystemFactory: z.function({
-      input: [z.string()],
-      output: moduleSystemFactorySchema,
+      input: [z.string(), z.string()],
+      output: z.promise(moduleSystemFactorySchema),
     }),
   })
   .loose();
@@ -134,7 +134,7 @@ export const pluginContractSchema = z
     name: z.string(),
     description: z.string(),
     version: z.string(),
-    author: z.string(),
+    authors: z.array(z.string()),
     adapters: z.array(adapterPluginContractSchema),
   })
   .loose();
