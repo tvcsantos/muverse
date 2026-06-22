@@ -1,5 +1,5 @@
-import { promises as fs } from "fs";
-import { join } from "path";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { ModuleChangeResult } from "../services/version-applier.js";
 import {
   Context,
@@ -119,7 +119,7 @@ export async function generateChangesForModules(
       continue;
     }
 
-    const renderedPath = join(repoRoot, moduleResult.path, filename);
+    const renderedPath = path.join(repoRoot, moduleResult.path, filename);
 
     let prepend = true;
     if (await exists(renderedPath)) {
@@ -209,7 +209,7 @@ export async function generateRootChanges(
     return;
   }
 
-  const renderedPath = join(repoRoot, moduleResult.path, filename);
+  const renderedPath = path.join(repoRoot, moduleResult.path, filename);
 
   let prepend = true;
   if (await exists(renderedPath)) {

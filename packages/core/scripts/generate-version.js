@@ -10,11 +10,24 @@ const versionFilePath = join(__dirname, '../src/utils/version.ts');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
 const packageName = packageJson.name;
+const authors = [];
+
+const localAuthors = packageJson.authors;
+if (Array.isArray(localAuthors)) {
+    authors = localAuthors
+} else if (localAuthors !== undefined) {
+    authors = localAuthors.split(/[, ]/).filter(Boolean)
+} else if (packageJson.author) {
+    authors.push(packageJson.author)
+} else {
+    authors.push('Unknown Author')
+}
 
 const content = `// This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
 export const VERSION = "${version}";
 export const PACKAGE_NAME = "${packageName}";
+export const AUTHORS = ${JSON.stringify(authors)};
 `;
 
 mkdirSync(join(__dirname, '../src/utils'), { recursive: true });

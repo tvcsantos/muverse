@@ -8,11 +8,12 @@ import { ModuleSystemFactory } from "../services/module-system-factory.js";
  * @returns A ModuleSystemFactory instance configured for the specified adapter
  * @throws {Error} If the adapter name is not recognized or supported
  */
-export function createModuleSystemFactory(
+export async function createModuleSystemFactory(
   adapterName: string,
   adapterPlugins: AdapterPluginContract[],
   repoRoot: string,
-): ModuleSystemFactory {
+  configDirectory: string,
+): Promise<ModuleSystemFactory> {
   const lowerCasedAdapterName = adapterName.toLowerCase();
   const candidatePlugin = adapterPlugins.find(
     (plugin) => plugin.id.toLowerCase() === lowerCasedAdapterName,
@@ -20,5 +21,5 @@ export function createModuleSystemFactory(
   if (!candidatePlugin) {
     throw new Error(`Unsupported adapter: ${adapterName}`);
   }
-  return candidatePlugin.moduleSystemFactory(repoRoot);
+  return await candidatePlugin.moduleSystemFactory(repoRoot, configDirectory);
 }

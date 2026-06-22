@@ -1,6 +1,6 @@
 {
   "name": "versu",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Versu",
   "private": true,
   "workspaces": [
@@ -12,7 +12,7 @@
     "build": "npm run build --workspaces",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint packages/*/src/**/*.ts",
+    "lint": "eslint 'packages/*/src/**/*.ts'",
     "format": "prettier --write packages/*/src/**/*.ts"
   },
   "keywords": [

@@ -1,19 +1,18 @@
 {
   "name": "@versu/action",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Versu (GitHub Action)",
   "type": "module",
   "main": "dist/index.js",
   "private": true,
   "scripts": {
     "prebuild": "node scripts/generate-version.mjs",
-    "build": "npx rollup --config rollup.config.mjs && npm run copy-assets && npm run copy-action-yml",
+    "build": "npx rollup --config rollup.config.mjs && npm run copy-action-yml",
     "package": "npm run build",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write src/**/*.ts",
-    "copy-assets": "cpx \"../core/src/adapters/gradle/init-project-information.gradle.kts\" \"dist/\"",
     "copy-action-yml": "node scripts/copy-action-yml.mjs"
   },
   "keywords": [
@@ -44,7 +43,7 @@
     "@actions/core": "^3.0.1",
     "@actions/exec": "^3.0.0",
     "@actions/github": "^9.1.1",
-    "@versu/core": "^2.0.0"
+    "@versu/core": "^3.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",
@@ -55,6 +54,7 @@
     "eslint": "^10.5.0",
     "prettier": "^3.8.4",
     "rollup": "^4.62.2",
+    "shx": "^0.3.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   },

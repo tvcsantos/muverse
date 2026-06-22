@@ -45,7 +45,8 @@ import { constants as constants$9 } from 'node:os';
 import { serialize } from 'node:v8';
 import { statSync, readFileSync, appendFileSync, writeFileSync, createWriteStream, createReadStream } from 'node:fs';
 import { finished } from 'node:stream/promises';
-import require$$1$7 from 'fs/promises';
+import * as fs$4 from 'fs/promises';
+import fs__default from 'fs/promises';
 import require$$3 from 'url';
 import require$$1$6 from 'module';
 import require$$6 from 'inspector';
@@ -38680,7 +38681,7 @@ async function exists(path) {
     try {
         // Attempt to access the path
         // If access succeeds, the path exists and is accessible
-        await promises.access(path);
+        await fs$4.access(path);
         return true;
     }
     catch {
@@ -49390,6 +49391,13 @@ function maxBumpType(bumpTypes) {
     }, "none");
 }
 /**
+ * Creates an initial semantic version (0.0.0) for new modules or projects.
+ * @returns A Version object representing version 0.0.0
+ */
+function createInitialVersion() {
+    return new semverExports.SemVer("0.0.0");
+}
+/**
  * Adds build metadata to a semantic version.
  * Build metadata is appended with a '+' sign and doesn't affect version precedence.
  * @param version - The version to add metadata to
@@ -49549,13 +49557,13 @@ class VersionManager {
  * @returns A ModuleSystemFactory instance configured for the specified adapter
  * @throws {Error} If the adapter name is not recognized or supported
  */
-function createModuleSystemFactory(adapterName, adapterPlugins, repoRoot) {
+async function createModuleSystemFactory(adapterName, adapterPlugins, repoRoot, configDirectory) {
     const lowerCasedAdapterName = adapterName.toLowerCase();
     const candidatePlugin = adapterPlugins.find((plugin) => plugin.id.toLowerCase() === lowerCasedAdapterName);
     if (!candidatePlugin) {
         throw new Error(`Unsupported adapter: ${adapterName}`);
     }
-    return candidatePlugin.moduleSystemFactory(repoRoot);
+    return await candidatePlugin.moduleSystemFactory(repoRoot, configDirectory);
 }
 
 var dist$1 = {};
@@ -253403,7 +253411,7 @@ function requireLoaders () {
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.loadTs = exports.loadTsSync = exports.loadYaml = exports.loadJson = exports.loadJs = exports.loadJsSync = void 0;
 		const fs_1 = require$$0__default;
-		const promises_1 = require$$1$7;
+		const promises_1 = fs__default;
 		const path_1 = __importDefault(path__default);
 		const url_1 = require$$3;
 		const crypto_1 = crypto__default;
@@ -254063,7 +254071,7 @@ function requireExplorer () {
 	};
 	Object.defineProperty(Explorer, "__esModule", { value: true });
 	Explorer.Explorer = void 0;
-	const promises_1 = __importDefault(require$$1$7);
+	const promises_1 = __importDefault(fs__default);
 	const path_1 = __importDefault(path__default);
 	const defaults_1 = requireDefaults();
 	const ExplorerBase_js_1 = requireExplorerBase();
@@ -264793,11 +264801,11 @@ async function updateChangesFile(content, filePath, prependPlaceholder) {
     if (await exists(filePath)) {
         logger$1.info("Updating existing changes", { path: filePath });
         // Try to read existing changes
-        const existingContent = await promises.readFile(filePath, "utf8");
+        const existingContent = await fs$4.readFile(filePath, "utf8");
         const newContent = `${prependPlaceholder}\n\n${content.trimEnd()}`;
         fileContent = existingContent.replace(prependPlaceholder, newContent);
     }
-    await promises.writeFile(filePath, fileContent, "utf8");
+    await fs$4.writeFile(filePath, fileContent, "utf8");
 }
 async function buildContextRepository(options = {}) {
     const repoUrl = await getCurrentRepoUrl(options);
@@ -264836,7 +264844,7 @@ async function generateChangesForModules(moduleResults, getCommitsForModule, rep
             });
             continue;
         }
-        const renderedPath = join(repoRoot, moduleResult.path, filename);
+        const renderedPath = path$1.join(repoRoot, moduleResult.path, filename);
         let prepend = true;
         if (await exists(renderedPath)) {
             prepend = false;
@@ -264895,7 +264903,7 @@ async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot,
         });
         return;
     }
-    const renderedPath = join(repoRoot, moduleResult.path, filename);
+    const renderedPath = path$1.join(repoRoot, moduleResult.path, filename);
     let prepend = true;
     if (await exists(renderedPath)) {
         prepend = false;
@@ -265158,10 +265166,11 @@ class AdapterMetadataProvider {
  * Provides automatic project adapter detection, fast lookup by ID, and discovery of supported adapters.
  */
 class AdapterIdentifierRegistry {
+    identifiers;
     /**
      * Internal map of adapter identifiers keyed by their unique ID.
      */
-    identifiers;
+    identifiersMap;
     /**
      * Cached array of all supported adapter IDs.
      */
@@ -265171,8 +265180,9 @@ class AdapterIdentifierRegistry {
      * @param identifiers - Array of adapter identifiers to register
      */
     constructor(identifiers) {
-        this.identifiers = new Map(identifiers.map((id) => [id.metadata.id, id]));
-        this.supportedAdapters = Array.from(this.identifiers.keys());
+        this.identifiers = identifiers;
+        this.identifiersMap = new Map(identifiers.map((id) => [id.metadata.id, id]));
+        this.supportedAdapters = Array.from(this.identifiersMap.keys());
     }
     /**
      * Automatically identifies which adapter can handle the specified project.
@@ -265181,7 +265191,7 @@ class AdapterIdentifierRegistry {
      */
     async identify(projectRoot) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for (const [_, identifier] of this.identifiers) {
+        for (const identifier of this.identifiers) {
             try {
                 const result = await identifier.accept(projectRoot);
                 if (result) {
@@ -265202,7 +265212,7 @@ class AdapterIdentifierRegistry {
      * @returns The adapter if found, or `null` if not registered
      */
     getIdentifierById(id) {
-        return this.identifiers.get(id) || null;
+        return this.identifiersMap.get(id) || null;
     }
     /**
      * Returns a list of all supported adapter IDs in this registry.
@@ -265218,10 +265228,14 @@ class AdapterIdentifierRegistry {
  *
  * @returns Configured {@link AdapterIdentifierRegistry} with all available adapters
  */
-function createAdapterIdentifierRegistry(plugins) {
+async function createAdapterIdentifierRegistry(plugins, configDirectory) {
     // Array of all registered adapter identifiers
     // Order matters: first matching adapter is selected during auto-detection
-    const identifiers = plugins.flatMap((plugin) => plugin.adapters.map((adapter) => adapter.adapterIdentifier()));
+    const identifiers = [];
+    const adapters = plugins.flatMap((x) => x.adapters);
+    for (const adapter of adapters) {
+        identifiers.push(await adapter.adapterIdentifier(configDirectory));
+    }
     // Create and return the registry with all registered identifiers
     return new AdapterIdentifierRegistry(identifiers);
 }
@@ -265261,8 +265275,9 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "2.0.0";
+const VERSION$7 = "3.0.0";
 const PACKAGE_NAME$1 = "@versu/core";
+const AUTHORS = ["tvcsantos"];
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
 const banner = `
@@ -271056,23 +271071,23 @@ const versionUpdateStrategySchema = object({
 const moduleSystemFactorySchema = object({
     createDetector: _function({
         input: [string()],
-        output: moduleDetectorSchema,
+        output: promise(moduleDetectorSchema),
     }),
     createVersionUpdateStrategy: _function({
         input: [moduleRegistrySchema],
-        output: versionUpdateStrategySchema,
+        output: promise(versionUpdateStrategySchema),
     }),
 })
     .loose();
 const adapterPluginContractSchema = object({
     id: string(),
     adapterIdentifier: _function({
-        input: [],
-        output: adapterIdentifierSchema,
+        input: [string()],
+        output: promise(adapterIdentifierSchema),
     }),
     moduleSystemFactory: _function({
-        input: [string()],
-        output: moduleSystemFactorySchema,
+        input: [string(), string()],
+        output: promise(moduleSystemFactorySchema),
     }),
 })
     .loose();
@@ -271081,19 +271096,44 @@ const pluginContractSchema = object({
     name: string(),
     description: string(),
     version: string(),
-    author: string(),
+    authors: array(string()),
     adapters: array(adapterPluginContractSchema),
 })
     .loose();
 
+function insertSorted(arr, element, compareFn) {
+    let left = 0;
+    let right = arr.length - 1;
+    // Binary search to pinpoint the exact insertion index
+    while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        const comparison = compareFn(arr[mid], element);
+        if (comparison === 0) {
+            left = mid; // Exact match found, insert here
+            break;
+        }
+        else if (comparison < 0) {
+            left = mid + 1; // Search the right half
+        }
+        else {
+            right = mid - 1; // Search the left half
+        }
+    }
+    // 'left' is now the correct index to insert the element
+    arr.splice(left, 0, element);
+    return arr;
+}
+
 class DefaultPluginLoader {
     pluginValidator;
     pluginsMap = new Map();
+    orderedPlugins;
     constructor(pluginValidator) {
         this.pluginValidator = pluginValidator;
+        this.orderedPlugins = [];
     }
     get plugins() {
-        return Array.from(this.pluginsMap.values());
+        return this.orderedPlugins;
     }
     async detect() {
         logger$1.info("Loading all plugins from node_modules");
@@ -271123,7 +271163,7 @@ class DefaultPluginLoader {
      * 2. Load ONLY the plugins specified in the whitelist
      * @param pluginNames List of package names (e.g. ['my-plugin-alpha', '@scope/my-plugin-beta'])
      */
-    async load(pluginNames) {
+    async loadByName(pluginNames) {
         if (pluginNames.length === 0) {
             logger$1.info("No plugins specified for loading, defaulting to auto-detect");
             return await this.detect();
@@ -271140,6 +271180,20 @@ class DefaultPluginLoader {
                 logger$1.error("Plugin could not be found", { pluginName });
             }
         }
+    }
+    loadDirect(plugins) {
+        logger$1.info("Loading plugins directly", { count: plugins.length });
+        for (const plugin of plugins) {
+            logger$1.debug("Loading plugin directly", { id: plugin.id });
+            this.pluginsMap.set(plugin.id, plugin);
+            insertSorted(this.orderedPlugins, plugin, pluginOrderFn);
+            logger$1.info(`Plugin loaded`, {
+                name: plugin.name,
+                id: plugin.id,
+                version: plugin.version,
+            });
+        }
+        return Promise.resolve();
     }
     /**
      * 3. Dynamically require the plugin
@@ -271164,7 +271218,9 @@ class DefaultPluginLoader {
                 });
                 return false;
             }
-            this.pluginsMap.set(plugin.id, plugin);
+            const orderedPlugin = makeOrdered(plugin, HIGHEST_PRECEDENCE);
+            this.pluginsMap.set(plugin.id, orderedPlugin);
+            insertSorted(this.orderedPlugins, orderedPlugin, pluginOrderFn);
             logger$1.info(`Plugin loaded`, {
                 name: plugin.name,
                 id: plugin.id,
@@ -271181,6 +271237,12 @@ class DefaultPluginLoader {
         return true;
     }
 }
+function makeOrdered(p, order) {
+    return { ...p, order };
+}
+const pluginOrderFn = (a, b) => a.order - b.order;
+const HIGHEST_PRECEDENCE = Number.MIN_VALUE;
+const LOWEST_PRECEDENCE = Number.MAX_VALUE;
 const pluginLoader = new DefaultPluginLoader(ConfigurationValidatorFactory.create(pluginContractSchema));
 
 const commitNoteSchema = object({
@@ -271343,6 +271405,162 @@ const configSchemaWithDefaults = object({
         .optional(),
 });
 
+/**
+ * Adapter identifier for Manually configured projects.
+ * Detects Manually configured projects by looking for project-information.json in the config directory.
+ */
+class ManualAdapterIdentifier {
+    metadata;
+    hasProjectInformationFile;
+    constructor(metadata, hasProjectInformationFile) {
+        this.metadata = metadata;
+        this.hasProjectInformationFile = hasProjectInformationFile;
+    }
+    /**
+     * Determines whether the specified project is a Manual configured project.
+     * @param projectRoot - Absolute path to the project root directory
+     * @returns True if there is a project-information.json file in the config directory, false otherwise
+     */
+    async accept(_projectRoot) {
+        logger$1.debug("Project information file", {
+            hasProjectInformationFile: this.hasProjectInformationFile,
+        });
+        return this.hasProjectInformationFile;
+    }
+}
+
+function getProjectInformationPath(configDirectory) {
+    return path$1.resolve(path$1.join(configDirectory, "project-information.json"));
+}
+async function readRawProjectInformation(configDirectory) {
+    const projectInformationPath = getProjectInformationPath(configDirectory);
+    const content = await fs$4.readFile(projectInformationPath, "utf8");
+    return JSON.parse(content);
+}
+function getProjectInformationFromRawData(projectInformation) {
+    const moduleIds = Object.keys(projectInformation);
+    const modules = new Map();
+    let rootModule;
+    for (const [moduleId, rawModule] of Object.entries(projectInformation)) {
+        if (rawModule.type === "root") {
+            rootModule = moduleId;
+        }
+        const module = {
+            id: moduleId,
+            name: rawModule.name,
+            path: rawModule.path,
+            type: rawModule.type,
+            affectedModules: new Set(rawModule.affectedModules),
+            version: rawModule.version === undefined
+                ? createInitialVersion()
+                : parseSemVer(rawModule.version),
+            declaredVersion: rawModule.declaredVersion,
+        };
+        for (const [key, value] of Object.entries(rawModule)) {
+            if (!(key in module)) {
+                module[key] = value;
+            }
+        }
+        modules.set(moduleId, module);
+    }
+    if (!rootModule) {
+        throw new Error("No root module found. Maven project must include a root pom.xml.");
+    }
+    return {
+        moduleIds,
+        modules,
+        rootModule,
+    };
+}
+
+/**
+ * Module detector for Manually configured projects.
+ * Parses project-information.json files to discover all modules and their dependencies.
+ */
+class ManualModuleDetector {
+    repoRoot;
+    configDirectory;
+    /** Absolute path to the repository root directory. */
+    constructor(repoRoot, configDirectory) {
+        this.repoRoot = repoRoot;
+        this.configDirectory = configDirectory;
+    }
+    async detect() {
+        const rawProjectInformation = await readRawProjectInformation(this.configDirectory);
+        return getProjectInformationFromRawData(rawProjectInformation);
+    }
+}
+
+class ManualVersionUpdateStrategy {
+    configDirectory;
+    constructor(configDirectory) {
+        this.configDirectory = configDirectory;
+    }
+    async writeVersionUpdates(moduleVersions) {
+        const rawProjectInformation = await readRawProjectInformation(this.configDirectory);
+        for (const [moduleId, newVersion] of moduleVersions) {
+            const module = rawProjectInformation[moduleId];
+            if (!module) {
+                throw new Error(`Module ${moduleId} not found in project information`);
+            }
+            module.version = newVersion;
+        }
+        const projectInformationPath = getProjectInformationPath(this.configDirectory);
+        await fs$4.writeFile(projectInformationPath, JSON.stringify(rawProjectInformation, null, 2), "utf-8");
+    }
+}
+
+/**
+ * Factory for creating Manually configured module system components.
+ */
+class ManualModuleSystemFactory {
+    repoRoot;
+    configDirectory;
+    /** Absolute path to the repository root directory. */
+    constructor(repoRoot, configDirectory) {
+        this.repoRoot = repoRoot;
+        this.configDirectory = configDirectory;
+    }
+    async createDetector(_outputFile) {
+        return new ManualModuleDetector(this.repoRoot, this.configDirectory);
+    }
+    async createVersionUpdateStrategy(_moduleRegistry) {
+        return new ManualVersionUpdateStrategy(this.configDirectory);
+    }
+}
+
+/** Unique identifier for the Manual adapter ('manual'). */
+const MANUAL_ID = "manual";
+
+const manualPlugin = {
+    id: MANUAL_ID,
+    name: "Manual",
+    description: "Adapter plugin for Manually configured projects build system. " +
+        "Provides support for detecting and updating versions in Manully configured projects.",
+    version: VERSION$7,
+    authors: AUTHORS,
+    adapters: [
+        {
+            id: MANUAL_ID,
+            adapterIdentifier: async (configDirectory) => {
+                const projectInformationPath = getProjectInformationPath(configDirectory);
+                const hasProjectInformationFile = await exists(projectInformationPath);
+                if (!hasProjectInformationFile) {
+                    throw new Error("Project Information file not found");
+                }
+                const projectInformation = await readRawProjectInformation(configDirectory);
+                const metadata = {
+                    id: MANUAL_ID,
+                    capabilities: projectInformation.capabilities,
+                };
+                return new ManualAdapterIdentifier(metadata, true);
+            },
+            moduleSystemFactory: async (repoRoot, configDirectory) => new ManualModuleSystemFactory(repoRoot, configDirectory),
+        },
+    ],
+    order: LOWEST_PRECEDENCE,
+};
+
 class VersuRunner {
     moduleSystemFactory; // Will be initialized in run()
     moduleRegistry; // Will be initialized in run()
@@ -271447,20 +271665,21 @@ class VersuRunner {
         this.config = await this.configurationLoader.load(this.configDirectory);
     }
     async loadPluginsAndResolveAdapter() {
-        await pluginLoader.load(this.config.plugins);
+        await pluginLoader.loadByName(this.config.plugins);
+        await pluginLoader.loadDirect([manualPlugin]);
         const plugins = pluginLoader.plugins;
-        this.adapterIdentifierRegistry = createAdapterIdentifierRegistry(plugins);
+        this.adapterIdentifierRegistry = await createAdapterIdentifierRegistry(plugins, this.configDirectory);
         this.adapterMetadataProvider = new AdapterMetadataProvider(this.adapterIdentifierRegistry, {
             repoRoot: this.options.repoRoot,
             adapter: this.options.adapter,
         });
         this.adapter = await this.adapterMetadataProvider.getMetadata();
         // Initialize module system factory with resolved adapter
-        this.moduleSystemFactory = createModuleSystemFactory(this.adapter.id, plugins.flatMap((plugin) => plugin.adapters), this.options.repoRoot);
+        this.moduleSystemFactory = await createModuleSystemFactory(this.adapter.id, plugins.flatMap((plugin) => plugin.adapters), this.options.repoRoot, this.configDirectory);
     }
     async discoverModulesAndAnalyzeCommits() {
         // Discover modules and get hierarchy manager
-        const detector = this.moduleSystemFactory.createDetector(path__default.resolve(path__default.join(this.configDirectory, "project-information.json")));
+        const detector = await this.moduleSystemFactory.createDetector(getProjectInformationPath(this.configDirectory));
         this.moduleRegistry = new MapModuleRegistry(await detector.detect());
         // Log discovered modules through hierarchy manager
         const moduleIds = this.moduleRegistry.getModuleIds();
@@ -271489,7 +271708,7 @@ class VersuRunner {
         const processedModuleChanges = await this.versionBumper.calculateVersionBumps(moduleCommits);
         const discoveredModules = Array.from(this.moduleRegistry.getModules().values());
         // Create version manager
-        const versionUpdateStrategy = this.moduleSystemFactory.createVersionUpdateStrategy(this.moduleRegistry);
+        const versionUpdateStrategy = await this.moduleSystemFactory.createVersionUpdateStrategy(this.moduleRegistry);
         this.versionManager = new VersionManager(this.moduleRegistry, versionUpdateStrategy);
         // Initialize version applier and apply changes
         const versionApplierOptions = {
@@ -271770,7 +271989,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "2.0.0";
+const VERSION$6 = "3.0.0";
 const PACKAGE_NAME = "@versu/action";
 
 class Context {

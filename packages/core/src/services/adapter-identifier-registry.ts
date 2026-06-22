@@ -8,7 +8,7 @@ export class AdapterIdentifierRegistry {
   /**
    * Internal map of adapter identifiers keyed by their unique ID.
    */
-  private readonly identifiers: ReadonlyMap<string, AdapterIdentifier>;
+  private readonly identifiersMap: ReadonlyMap<string, AdapterIdentifier>;
 
   /**
    * Cached array of all supported adapter IDs.
@@ -19,9 +19,9 @@ export class AdapterIdentifierRegistry {
    * Creates a new adapter identifier registry.
    * @param identifiers - Array of adapter identifiers to register
    */
-  constructor(identifiers: AdapterIdentifier[]) {
-    this.identifiers = new Map(identifiers.map((id) => [id.metadata.id, id]));
-    this.supportedAdapters = Array.from(this.identifiers.keys());
+  constructor(private readonly identifiers: AdapterIdentifier[]) {
+    this.identifiersMap = new Map(identifiers.map((id) => [id.metadata.id, id]));
+    this.supportedAdapters = Array.from(this.identifiersMap.keys());
   }
 
   /**
@@ -31,7 +31,7 @@ export class AdapterIdentifierRegistry {
    */
   async identify(projectRoot: string): Promise<AdapterIdentifier | null> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const [_, identifier] of this.identifiers) {
+    for (const identifier of this.identifiers) {
       try {
         const result = await identifier.accept(projectRoot);
         if (result) {
@@ -53,7 +53,7 @@ export class AdapterIdentifierRegistry {
    * @returns The adapter if found, or `null` if not registered
    */
   getIdentifierById(id: string): AdapterIdentifier | null {
-    return this.identifiers.get(id) || null;
+    return this.identifiersMap.get(id) || null;
   }
 
   /**

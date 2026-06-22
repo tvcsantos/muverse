@@ -1,6 +1,6 @@
 {
   "name": "@versu/core",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Versu (Core Library)",
   "type": "module",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
     "build": "tsc --project tsconfig.json --outDir dist",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write src/**/*.ts"
   },
   "keywords": [
@@ -59,7 +59,6 @@
     "@types/node": "^24.13.2",
     "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "^4.1.9",
-    "cpx": "^1.5.0",
     "eslint": "^10.5.0",
     "prettier": "^3.8.4",
     "vitest": "^4.1.9"

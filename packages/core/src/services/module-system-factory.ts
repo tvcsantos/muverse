@@ -16,7 +16,7 @@ export interface ModuleSystemFactory {
    * @param outputFile - Path to the output file for project information
    * @returns {@link ModuleDetector} configured for this build system
    */
-  createDetector(outputFile: string): ModuleDetector;
+  createDetector(outputFile: string): Promise<ModuleDetector>;
 
   /**
    * Creates a version update strategy for writing versions to build files.
@@ -26,5 +26,5 @@ export interface ModuleSystemFactory {
    */
   createVersionUpdateStrategy(
     moduleRegistry: ModuleRegistry,
-  ): VersionUpdateStrategy;
+  ): Promise<VersionUpdateStrategy>;
 }
