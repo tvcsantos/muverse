@@ -13,8 +13,8 @@ const content = readFileSync(sourceFile, 'utf8');
 
 // Replace the main path
 const updatedContent = content.replace(
-  /main:\s*['"]dist\/index\.js['"]/,
-  "main: 'packages/action/dist/index.js'"
+  /main:\s*['"]dist\/index\.cjs['"]/,
+  "main: 'packages/action/dist/index.cjs'"
 );
 
 // Add generation notice at the top

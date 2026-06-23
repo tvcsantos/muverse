@@ -86,4 +86,4 @@ outputs:
     description: 'JSON array of { moduleId, path } of generated release notes files'
 runs:
   using: 'node24'
-  main: 'packages/action/dist/index.js'
+  main: 'packages/action/dist/index.cjs'

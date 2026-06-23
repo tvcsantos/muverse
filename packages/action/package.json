@@ -2,8 +2,7 @@
   "name": "@versu/action",
   "version": "3.1.0",
   "description": "Versu (GitHub Action)",
-  "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "private": true,
   "scripts": {
     "prebuild": "node scripts/generate-version.mjs",
