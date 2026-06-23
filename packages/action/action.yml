@@ -69,7 +69,7 @@ inputs:
   tag-version-prefix:
     description: "Prefix to add on tag versions (e.g., 'v', default: empty)"
     required: false
-    default: 'v'
+    default: ''
 outputs:
   bumped:
     description: 'Whether any module was bumped'
