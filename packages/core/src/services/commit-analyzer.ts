@@ -32,6 +32,8 @@ export class CommitAnalyzer {
    * @throws {Error} If git operations fail
    */
   async analyzeCommitsSinceLastRelease(
+    tagVersionPrefix: string,
+    stripModulePrefix: boolean,
     fromRef?: string,
   ): Promise<Map<string, { commits: Commit[]; lastTag: string | null }>> {
     logger.info("Analyzing commits since last release", { fromRef });
@@ -53,6 +55,8 @@ export class CommitAnalyzer {
       // Retrieve commits for this module, excluding child modules
       const { commits, lastTag } = await getCommitsSinceLastTag(
         projectInfo,
+        tagVersionPrefix,
+        stripModulePrefix,
         { cwd: this.repoRoot },
         childModulePaths,
         fromRef,

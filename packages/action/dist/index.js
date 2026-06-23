@@ -37996,7 +37996,7 @@ const commitParser = new CommitParser({
  * @param fromRef - Optional Git reference to start analysis from (i.e. the cutoff point for commits to include)
  * @returns Promise resolving to array of parsed commits (oldest to newest)
  */
-async function getCommitsSinceLastTag(projectInfo, options = {}, excludePaths = [], fromRef) {
+async function getCommitsSinceLastTag(projectInfo, tagVersionPrefix, stripModulePrefix, options = {}, excludePaths = [], fromRef) {
     // Resolve the working directory, defaulting to current process directory
     const cwd = options.cwd || process.cwd();
     logger$1.debug("Getting commits for module since last tag", {
@@ -38007,7 +38007,7 @@ async function getCommitsSinceLastTag(projectInfo, options = {}, excludePaths = 
         // Find the most recent tag for this module
         // For root modules, this finds general tags (v1.0.0)
         // For submodules, this finds module-specific tags (module@1.0.0)
-        const lastTag = await getLastTagForModule(projectInfo, fromRef, { cwd });
+        const lastTag = await getLastTagForModule(projectInfo, tagVersionPrefix, stripModulePrefix, fromRef, { cwd });
         logger$1.debug("Last tag for module found", {
             moduleName: projectInfo.name,
             moduleType: projectInfo.type,
@@ -38172,6 +38172,48 @@ async function isCommitBefore(commitA, commitB, options = {}) {
     }
 }
 /**
+ * Gets the most recent git tag for a module matching the specified regex pattern.
+ *
+ * The result hasTags indicates whether any tags matching the regex are found,
+ * regardless of whether they are before or after the fromRef.
+ *
+ * The lastTag is the most recent tag that matches the regex and is before the
+ * fromRef (if provided). If no matching tags exist, lastTag will be null.
+ *
+ * @param tagRegex - Regular expression to match module tags
+ * @param fromRef - Optional Git reference to start analysis from (i.e. the cutoff point for commits to include)
+ * @param options - Git operation options
+ * @returns Object containing a boolean indicating if tags exist and the most recent tag name or null if no tags exist
+ */
+async function getLastTagMatchingRegex(tagRegex, fromRef, options = {}) {
+    // Resolve working directory, defaulting to current directory
+    const cwd = options.cwd || process.cwd();
+    logger$1.debug("Executing git command", {
+        command: `git tag -l --sort=-version:refname`,
+    });
+    const { stdout } = await execa("git", ["tag", "-l", "--sort=-version:refname"], { cwd });
+    const trimmedStdout = stdout.trim();
+    // If we found module-specific tags, return the first (most recent)
+    const tags = trimmedStdout
+        .split("\n")
+        .filter(Boolean)
+        .filter((tag) => {
+        // filter tags matching the module tag regex
+        return tagRegex.test(tag);
+    });
+    const hasTags = tags.length > 0;
+    if (!fromRef) {
+        return { hasTags, lastTag: tags[0] || null };
+    }
+    for (const tag of tags) {
+        const isBefore = await isCommitBefore(fromRef, tag, { cwd });
+        if (isBefore) {
+            return { hasTags, lastTag: tag };
+        }
+    }
+    return { hasTags, lastTag: null };
+}
+/**
  * Finds the most recent git tag for a specific module with fallback to general tags.
  * Searches module-specific tags first (moduleName@*), then falls back to general tags.
  * @param projectInfo - Module information for tag pattern construction
@@ -38179,67 +38221,28 @@ async function isCommitBefore(commitA, commitB, options = {}) {
  * @param fromRef - Optional Git reference to start analysis from (i.e. the cutoff point for commits to include)
  * @returns Most recent tag name or null if no tags exist
  */
-async function getLastTagForModule(projectInfo, fromRef, options = {}) {
+async function getLastTagForModule(projectInfo, tagVersionPrefix, stripModulePrefix, fromRef, options = {}) {
     // Resolve working directory, defaulting to current directory
     const cwd = options.cwd || process.cwd();
-    logger$1.debug("Finding last tag for module", {
-        moduleName: projectInfo.name,
-        moduleType: projectInfo.type,
-    });
     try {
-        // Generate glob pattern for module-specific tags (e.g., 'api@*')
-        const moduleTagPattern = getModuleTagPattern(projectInfo.name);
-        // Only search for module-specific tags if it's not root and version is declared
-        // Root projects use general tags (v1.0.0) rather than module tags (root@1.0.0)
-        if (projectInfo.type !== "root" && projectInfo.declaredVersion) {
-            // Search for module-specific tags with version sorting
-            // --sort=-version:refname: Sort by version in descending order (newest first)
-            logger$1.debug("Executing git command", {
-                command: `git tag -l ${moduleTagPattern} --sort=-version:refname`,
-            });
-            const { stdout } = await execa("git", ["tag", "-l", moduleTagPattern, "--sort=-version:refname"], {
-                cwd,
-            });
-            // If we found module-specific tags, return the first (most recent)
-            if (stdout.trim()) {
-                const tags = stdout.trim().split("\n").filter(Boolean);
-                if (!fromRef)
-                    return tags[0] || null;
-                for (const tag of tags) {
-                    const isBefore = await isCommitBefore(fromRef, tag, { cwd });
-                    if (isBefore) {
-                        return tag;
-                    }
-                }
-                return null;
-            }
+        logger$1.debug("Finding last tag for module", {
+            moduleName: projectInfo.name,
+            moduleType: projectInfo.type,
+        });
+        const tagRegex = getModuleTagRegex(projectInfo.name, tagVersionPrefix, stripModulePrefix);
+        logger$1.debug("Looking for tags matching regex", { tagRegex });
+        let result = await getLastTagMatchingRegex(tagRegex, fromRef, { cwd });
+        if (result.hasTags) {
+            return result.lastTag;
         }
-        // Fallback to general tags when:
-        // 1. Module type is 'root', or
-        // 2. No module-specific tags were found
-        try {
-            // git describe finds the most recent tag reachable from HEAD
-            // --tags: Consider all tags (not just annotated)
-            // --abbrev=0: Don't show commit hash suffix
-            const range = fromRef ? `${fromRef}..HEAD` : "HEAD";
-            logger$1.debug("Executing git command", {
-                command: `git describe --tags --abbrev=0 ${range}`,
-            });
-            const { stdout: fallbackOutput } = await execa("git", ["describe", "--tags", "--abbrev=0", range], {
-                cwd,
-            });
-            return fallbackOutput.trim();
-        }
-        catch {
-            // If no tags at all, return null
-            // This typically means it's a new repository or no releases yet
-            return null;
-        }
+        const escapedTagVersionPrefix = RegExp.escape(tagVersionPrefix);
+        const regex = new RegExp(`^(.*)${escapedTagVersionPrefix}(\\d+\\.\\d+\\.\\d+.*)$`);
+        result = await getLastTagMatchingRegex(regex, fromRef, { cwd });
+        return result.lastTag;
     }
-    catch (_error) {
-        // Catch-all error handler: return null if any unexpected error occurs
-        // This makes the function non-throwing, which is safer for version calculations
-        return null;
+    catch (error) {
+        // Wrap error with context
+        throw new Error(`Failed to get last tag for module ${projectInfo.name}: ${error}`);
     }
 }
 /**
@@ -38305,20 +38308,32 @@ async function pushTags(options = {}) {
     }
 }
 /**
- * Generates a glob pattern for searching module-specific git tags (moduleName@*).
+ * Generates a regular expression for matching module-specific git tags
+ * and extracting version.
+ *
+ * Supports both prefixed (moduleName@v1.0.0) and non-prefixed (v1.0.0)
+ * formats based on configuration.
+ *
  * @param moduleName - The name of the module
- * @returns A glob pattern string matching all tags for the module
- * @internal
+ * @param tagVersionPrefix - The tag version prefix
+ * @param stripModulePrefix - Whether to strip the module prefix
+ * @returns A RegExp object for matching module-specific tags
  */
-function getModuleTagPattern(moduleName) {
-    // Create glob pattern for module-specific tags
-    // Format: moduleName@* where * matches any version
-    return `${moduleName}@*`;
+function getModuleTagRegex(moduleName, tagVersionPrefix, stripModulePrefix) {
+    const escapedTagVersionPrefix = RegExp.escape(tagVersionPrefix);
+    const versionTagPattern = `${escapedTagVersionPrefix}(\\d+\\.\\d+\\.\\d+.*)`;
+    if (stripModulePrefix) {
+        return new RegExp(`^${versionTagPattern}$`);
+    }
+    const escapedModuleName = RegExp.escape(moduleName);
+    return new RegExp(`^${escapedModuleName}@${versionTagPattern}$`);
 }
-function getModuleTagName(moduleName, version) {
-    // Construct tag name for a module and version
-    // Format: moduleName@version (e.g., 'core@1.0.0')
-    return `${moduleName}@${version}`;
+function getModuleTagName(moduleName, version, tagVersionPrefix, stripModulePrefix) {
+    // Construct tag name for a module, version and prefix
+    if (stripModulePrefix) {
+        return `${tagVersionPrefix}${version}`;
+    }
+    return `${moduleName}@${tagVersionPrefix}${version}`;
 }
 /**
  * Parses a git tag name to extract module and version components.
@@ -38332,19 +38347,19 @@ function getModuleTagName(moduleName, version) {
  * @param tagName - The full git tag name to parse.
  *                  Can be any string, but structured formats are recognized.
  *
+ * @param prefix - The expected version prefix (e.g., 'v') to identify version tags.
+ *
  * @returns Object with optional `module` and `version` fields:
  *          - Both present: Module tag (e.g., `core@1.0.0`)
  *          - Only version: General tag (e.g., `v1.0.0`)
  *          - Empty object: Unrecognized format
  * @internal
  */
-function parseTagName(tagName) {
-    // Try to match module-specific tag pattern: moduleName@version
-    // Regex: ^(.+)@(.+)$
-    //   ^(.+)  - Start of string, capture group 1 (module name, greedy)
-    //   @      - Literal @ separator
-    //   (.+)$  - Capture group 2 (version, greedy), end of string
-    const match = tagName.match(/^(.+)@(.+)$/);
+function parseTagName(tagName, prefix) {
+    const escapedPrefix = RegExp.escape(prefix);
+    const tagVersionPattern = `${escapedPrefix}(\\d+\\.\\d+\\.\\d+.*)`;
+    // Try to match module-specific tag pattern: moduleName@<prefix>MAJOR.MINOR.PATCH...
+    const match = tagName.match(new RegExp(`^(.+)@${tagVersionPattern}$`));
     if (match) {
         // Module tag matched - return both components
         return {
@@ -38352,12 +38367,8 @@ function parseTagName(tagName) {
             version: match[2],
         };
     }
-    // Try to match version-only tag pattern: v?MAJOR.MINOR.PATCH...
-    // Regex: ^v?(\d+\.\d+\.\d+.*)$
-    //   ^v?           - Start, optional 'v' prefix
-    //   (\d+\.\d+\.\d+  - Capture group: MAJOR.MINOR.PATCH (digits)
-    //   .*)$          - Any remaining characters (pre-release, metadata), end
-    const versionMatch = tagName.match(/^v?(\d+\.\d+\.\d+.*)$/);
+    // Try to match version-only tag pattern: <prefix>MAJOR.MINOR.PATCH...
+    const versionMatch = tagName.match(new RegExp(`^${tagVersionPattern}$`));
     if (versionMatch) {
         // Version tag matched - return only version (no module)
         return {
@@ -254832,7 +254843,7 @@ const mainReleaseRootTemplate = `## What's changed
 {{#if declaredVersion}}
 {{#if (ne type "root")}}
 {{#if isRelease}}
-- [{{name}}]({{path}}/CHANGELOG.md) - [{{to}}]({{@root.repoUrl}}/compare/{{name}}@{{from}}...{{name}}@{{to}})
+- [{{name}}]({{path}}/CHANGELOG.md) - [{{to}}]({{@root.repoUrl}}/compare/{{getModuleTagName name from}}...{{getModuleTagName name to}})
 {{else}}
 - [{{name}}]({{path}}/CHANGELOG.md) - Unreleased
 {{/if}}
@@ -255199,7 +255210,7 @@ class CommitAnalyzer {
      * @returns Map of module ID to array of {@link Commit} objects
      * @throws {Error} If git operations fail
      */
-    async analyzeCommitsSinceLastRelease(fromRef) {
+    async analyzeCommitsSinceLastRelease(tagVersionPrefix, stripModulePrefix, fromRef) {
         logger$1.info("Analyzing commits since last release", { fromRef });
         const moduleCommits = new Map();
         // Iterate through all registered modules
@@ -255208,7 +255219,7 @@ class CommitAnalyzer {
             // This prevents double-counting commits in the module hierarchy
             const childModulePaths = this.findChildModulePaths(projectInfo.path, projectId);
             // Retrieve commits for this module, excluding child modules
-            const { commits, lastTag } = await getCommitsSinceLastTag(projectInfo, { cwd: this.repoRoot }, childModulePaths, fromRef);
+            const { commits, lastTag } = await getCommitsSinceLastTag(projectInfo, tagVersionPrefix, stripModulePrefix, { cwd: this.repoRoot }, childModulePaths, fromRef);
             // Store commits for this module
             moduleCommits.set(projectId, { commits, lastTag });
             // Log exclusions for debugging
@@ -255611,7 +255622,7 @@ class VersionApplier {
                 bumpType: change.bumpType,
                 declaredVersion: change.module.declaredVersion,
                 tagName: isRelease
-                    ? getModuleTagName(change.module.name, change.toVersion)
+                    ? getModuleTagName(change.module.name, change.toVersion, this.options.tagVersionPrefix, this.options.stripModulePrefix)
                     : undefined,
                 isRelease: isRelease,
             };
@@ -264818,7 +264829,7 @@ async function buildContextRepository(options = {}) {
     };
 }
 /** Generate changes for multiple modules. */
-async function generateChangesForModules(moduleResults, getCommitsForModule, repoRoot, dryRun, filename, multiModule, config, provider) {
+async function generateChangesForModules(moduleResults, getCommitsForModule, repoRoot, dryRun, filename, multiModule, tagVersionPrefix, stripModulePrefix, config, provider) {
     const renderedPaths = [];
     if (!config) {
         throw new Error(`Missing required changes rendering configuration`);
@@ -264852,14 +264863,14 @@ async function generateChangesForModules(moduleResults, getCommitsForModule, rep
         const isRelease = isReleaseVersion(moduleResult.to);
         const version = isRelease ? moduleResult.to : undefined;
         const currentTag = isRelease
-            ? `${moduleResult.name}@${moduleResult.to}`
+            ? getModuleTagName(moduleResult.name, moduleResult.to, tagVersionPrefix, stripModulePrefix)
             : undefined;
         const previousTag = lastTag || undefined;
         const changesContent = await writeChangelogString(commits, {
             version: version,
             previousTag: previousTag,
             previousTagVersion: previousTag
-                ? parseTagName(previousTag).version
+                ? parseTagName(previousTag, tagVersionPrefix).version
                 : undefined,
             currentTag: currentTag,
             linkCompare: previousTag && currentTag ? true : false,
@@ -264881,7 +264892,7 @@ async function generateChangesForModules(moduleResults, getCommitsForModule, rep
     }
     return renderedPaths;
 }
-async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot, dryRun, filename, config, provider) {
+async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot, dryRun, filename, tagVersionPrefix, stripeModulePrefix, config, provider) {
     const moduleResult = moduleResults.find((result) => result.type === "root");
     if (!moduleResult) {
         logger$1.info("No root module found, skipping root changes generation");
@@ -264911,7 +264922,7 @@ async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot,
     const isRelease = isReleaseVersion(moduleResult.to);
     const version = isRelease ? moduleResult.to : undefined;
     const currentTag = isRelease
-        ? getModuleTagName(moduleResult.name, moduleResult.to)
+        ? getModuleTagName(moduleResult.name, moduleResult.to, tagVersionPrefix, stripeModulePrefix)
         : undefined;
     const previousTag = lastTag || undefined;
     const changesContent = await writeChangelogString(commits, {
@@ -264919,7 +264930,7 @@ async function generateRootChanges(moduleResults, getCommitsForModule, repoRoot,
         version: version,
         previousTag: previousTag,
         previousTagVersion: previousTag
-            ? parseTagName(previousTag).version
+            ? parseTagName(previousTag, tagVersionPrefix).version
             : undefined,
         currentTag: currentTag,
         linkCompare: previousTag && currentTag ? true : false,
@@ -264957,13 +264968,16 @@ class ChangesRenderer {
         if (moduleResults.length > 1 && !this.options.multiModule) {
             throw new Error("Multi-module rendering disabled but multiple modules being processed");
         }
+        if (moduleResults.length > 1 && this.options.stripModulePrefix) {
+            throw new Error("Cannot strip module prefix when multiple modules are being processed");
+        }
         logger$1.info("Rendering changes");
         // Generate individual module changes
-        const renderedPaths = await generateChangesForModules(moduleResults, async (moduleId) => moduleCommits.get(moduleId) || { commits: [], lastTag: null }, this.options.repoRoot, this.options.dryRun, this.options.filename, this.options.multiModule, this.options.config?.module, this.options.provider);
+        const renderedPaths = await generateChangesForModules(moduleResults, async (moduleId) => moduleCommits.get(moduleId) || { commits: [], lastTag: null }, this.options.repoRoot, this.options.dryRun, this.options.filename, this.options.multiModule, this.options.tagVersionPrefix, this.options.stripModulePrefix, this.options.config?.module, this.options.provider);
         if (this.options.multiModule) {
             logger$1.info("Multi-module changes generation enabled, generating root changes");
             // Generate root changes
-            const rootChangesPath = await generateRootChanges(moduleResults, async (moduleId) => moduleCommits.get(moduleId) || { commits: [], lastTag: null }, this.options.repoRoot, this.options.dryRun, this.options.filename, this.options.config?.root, this.options.provider);
+            const rootChangesPath = await generateRootChanges(moduleResults, async (moduleId) => moduleCommits.get(moduleId) || { commits: [], lastTag: null }, this.options.repoRoot, this.options.dryRun, this.options.filename, this.options.tagVersionPrefix, this.options.stripModulePrefix, this.options.config?.root, this.options.provider);
             if (rootChangesPath) {
                 renderedPaths.push(rootChangesPath);
             }
@@ -265052,14 +265066,14 @@ class GitOperations {
                 disabledBy,
             });
             for (const change of modulesWithDeclaredVersions) {
-                const tagName = `${change.name}@${change.to}`;
+                const tagName = getModuleTagName(change.name, change.to, this.options.tagVersionPrefix, this.options.stripModulePrefix);
                 createdTags.push({ moduleId: change.id, tag: tagName });
                 logger$1.info("Would create tag (dry run)", { tag: tagName });
             }
             return createdTags;
         }
         for (const change of modulesWithDeclaredVersions) {
-            const tagName = `${change.name}@${change.to}`;
+            const tagName = getModuleTagName(change.name, change.to, this.options.tagVersionPrefix, this.options.stripModulePrefix);
             const message = `Release ${change.name} v${change.to}`;
             await createTag(tagName, message, { cwd: this.options.repoRoot });
             createdTags.push({ moduleId: change.id, tag: tagName });
@@ -265275,7 +265289,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "3.0.3";
+const VERSION$7 = "3.1.0";
 const PACKAGE_NAME$1 = "@versu/core";
 const AUTHORS = ["tvcsantos"];
 
@@ -271609,6 +271623,8 @@ class VersuRunner {
             changelogFilename: this.options.changelogFilename || "CHANGELOG.md",
             releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
             fromRef: this.options.fromRef || "(no cutoff)",
+            stripModulePrefix: this.options.stripModulePrefix,
+            tagVersionPrefix: this.options.tagVersionPrefix,
         });
     }
     logShutdownInfo(result) {
@@ -271663,6 +271679,11 @@ class VersuRunner {
         logger$1.info("Provider set to", { provider: this.options.provider });
         this.configDirectory = path__default.join(this.options.repoRoot, ".versu");
         this.config = await this.configurationLoader.load(this.configDirectory);
+        if (!Handlebars.helpers.getModuleTagName) {
+            Handlebars.registerHelper("getModuleTagName", (moduleName, version) => {
+                return getModuleTagName(moduleName, version, this.options.tagVersionPrefix, this.options.stripModulePrefix);
+            });
+        }
     }
     async loadPluginsAndResolveAdapter() {
         await pluginLoader.loadByName(this.config.plugins);
@@ -271688,7 +271709,7 @@ class VersuRunner {
         });
         // Analyze commits since last release
         this.commitAnalyzer = new CommitAnalyzer(this.moduleRegistry, this.options.repoRoot);
-        return await this.commitAnalyzer.analyzeCommitsSinceLastRelease(this.options.fromRef);
+        return await this.commitAnalyzer.analyzeCommitsSinceLastRelease(this.options.tagVersionPrefix, this.options.stripModulePrefix, this.options.fromRef);
     }
     async calculatingBumpsAndApplyingChanges(moduleCommits) {
         // Initialize version bumper service
@@ -271713,6 +271734,8 @@ class VersuRunner {
         // Initialize version applier and apply changes
         const versionApplierOptions = {
             dryRun: this.options.dryRun,
+            tagVersionPrefix: this.options.tagVersionPrefix,
+            stripModulePrefix: this.options.stripModulePrefix,
         };
         this.versionApplier = new VersionApplier(this.versionManager, versionApplierOptions);
         const changedModules = await this.versionApplier.applyVersionChanges(processedModuleChanges);
@@ -271725,6 +271748,8 @@ class VersuRunner {
             dryRun: this.options.dryRun,
             multiModule,
             filename: this.options.changelogFilename || "CHANGELOG.md",
+            tagVersionPrefix: this.options.tagVersionPrefix,
+            stripModulePrefix: this.options.stripModulePrefix,
             config: this.config.changelog,
             provider: this.options.provider,
         });
@@ -271739,6 +271764,8 @@ class VersuRunner {
             dryRun: this.options.dryRun,
             multiModule,
             filename: this.options.releaseNotesFilename || "RELEASE.md",
+            tagVersionPrefix: this.options.tagVersionPrefix,
+            stripModulePrefix: this.options.stripModulePrefix,
             config: this.config.release,
             provider: this.options.provider,
         });
@@ -271757,6 +271784,8 @@ class VersuRunner {
             sequentialTagPush: this.options.sequentialTagPush,
             commitReleaseNotes: this.options.commitReleaseNotes,
             releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
+            tagVersionPrefix: this.options.tagVersionPrefix,
+            stripModulePrefix: this.options.stripModulePrefix,
         };
         this.gitOperations = new GitOperations(gitOperationsOptions);
         // Commit and push changes
@@ -271989,7 +272018,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "3.0.3";
+const VERSION$6 = "3.1.0";
 const PACKAGE_NAME = "@versu/action";
 
 class Context {
@@ -276977,6 +277006,8 @@ async function run() {
         const commitReleaseNotes = parseBooleanInput(getInput('commit-release-notes') || 'false');
         const changelogFilename = getInput('changelog-filename') || 'CHANGELOG.md';
         const releaseNotesFilename = getInput('release-notes-filename') || 'RELEASE.md';
+        const stripModulePrefix = parseBooleanInput(getInput('strip-module-prefix') || 'false');
+        const tagVersionPrefix = getInput('tag-version-prefix') || '';
         let fromRef;
         if (githubContext.isPullRequest()) {
             const { baseSha } = githubContext.getPullRequestInformation();
@@ -277000,6 +277031,8 @@ async function run() {
             // to avoid issues with large repositories or CI environments
             sequentialTagPush: true,
             commitReleaseNotes,
+            stripModulePrefix,
+            tagVersionPrefix,
             adapter,
             changelogFilename,
             releaseNotesFilename,

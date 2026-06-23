@@ -33,6 +33,8 @@ export async function run(): Promise<void> {
     const commitReleaseNotes = parseBooleanInput(core.getInput('commit-release-notes') || 'false');
     const changelogFilename = core.getInput('changelog-filename') || 'CHANGELOG.md';
     const releaseNotesFilename = core.getInput('release-notes-filename') || 'RELEASE.md';
+    const stripModulePrefix = parseBooleanInput(core.getInput('strip-module-prefix') || 'false');
+    const tagVersionPrefix = core.getInput('tag-version-prefix') || '';
 
     let fromRef: string | undefined;
     if (githubContext.isPullRequest()) {
@@ -58,6 +60,8 @@ export async function run(): Promise<void> {
       // to avoid issues with large repositories or CI environments
       sequentialTagPush: true,
       commitReleaseNotes,
+      stripModulePrefix,
+      tagVersionPrefix,
       adapter,
       changelogFilename,
       releaseNotesFilename,

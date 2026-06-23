@@ -7,6 +7,8 @@ import { PrereleaseBumpType, StableBumpType } from "../semver/types.js";
 
 export type VersionApplierOptions = {
   dryRun: boolean;
+  tagVersionPrefix: string;
+  stripModulePrefix: boolean;
 };
 
 export type ModuleChangeResult = {
@@ -69,7 +71,12 @@ export class VersionApplier {
         bumpType: change.bumpType,
         declaredVersion: change.module.declaredVersion,
         tagName: isRelease
-          ? getModuleTagName(change.module.name, change.toVersion)
+          ? getModuleTagName(
+              change.module.name,
+              change.toVersion,
+              this.options.tagVersionPrefix,
+              this.options.stripModulePrefix,
+            )
           : undefined,
         isRelease: isRelease,
       };

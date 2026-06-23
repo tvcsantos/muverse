@@ -8,6 +8,7 @@ import {
   createTag,
   pushTags,
   pushTag,
+  getModuleTagName,
 } from "../git/index.js";
 
 export type GitOperationsOptions = {
@@ -19,6 +20,8 @@ export type GitOperationsOptions = {
   sequentialTagPush: boolean;
   commitReleaseNotes: boolean;
   releaseNotesFilename: string;
+  tagVersionPrefix: string;
+  stripModulePrefix: boolean;
 };
 
 export type CreatedTagResult = {
@@ -123,7 +126,12 @@ export class GitOperations {
       });
 
       for (const change of modulesWithDeclaredVersions) {
-        const tagName = `${change.name}@${change.to}`;
+        const tagName = getModuleTagName(
+          change.name,
+          change.to,
+          this.options.tagVersionPrefix,
+          this.options.stripModulePrefix,
+        );
         createdTags.push({ moduleId: change.id, tag: tagName });
         logger.info("Would create tag (dry run)", { tag: tagName });
       }
@@ -132,7 +140,12 @@ export class GitOperations {
     }
 
     for (const change of modulesWithDeclaredVersions) {
-      const tagName = `${change.name}@${change.to}`;
+      const tagName = getModuleTagName(
+        change.name,
+        change.to,
+        this.options.tagVersionPrefix,
+        this.options.stripModulePrefix,
+      );
       const message = `Release ${change.name} v${change.to}`;
 
       await createTag(tagName, message, { cwd: this.options.repoRoot });

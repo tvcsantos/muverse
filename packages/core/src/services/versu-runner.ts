@@ -3,7 +3,11 @@ import { ModuleSystemFactory } from "./module-system-factory.js";
 import { MapModuleRegistry, type ModuleRegistry } from "./module-registry.js";
 import { VersionManager } from "./version-manager.js";
 import { createModuleSystemFactory } from "../factories/module-system-factory.js";
-import { getProviderName, isWorkingDirectoryClean } from "../git/index.js";
+import {
+  getModuleTagName,
+  getProviderName,
+  isWorkingDirectoryClean,
+} from "../git/index.js";
 import { ConfigurationLoader } from "./configuration-loader.js";
 import { CommitAnalyzer } from "./commit-analyzer.js";
 import { VersionBumper, VersionBumperOptions } from "./version-bumper.js";
@@ -32,6 +36,7 @@ import type { VersuConfigWithDefaults } from "../config/types.js";
 import { configSchemaWithDefaults } from "../config/schema.js";
 import manualPlugin from "../plugins/manual/index.js";
 import { getProjectInformationPath } from "./project-information.js";
+import Handlebars from "handlebars";
 
 export type RunnerOptions = {
   readonly repoRoot: string;
@@ -48,6 +53,8 @@ export type RunnerOptions = {
   readonly dryRun: boolean;
   readonly sequentialTagPush: boolean;
   readonly commitReleaseNotes: boolean;
+  readonly stripModulePrefix: boolean;
+  readonly tagVersionPrefix: string;
   readonly adapter?: string;
   readonly changelogFilename?: string;
   readonly releaseNotesFilename?: string;
@@ -120,6 +127,8 @@ export class VersuRunner {
       changelogFilename: this.options.changelogFilename || "CHANGELOG.md",
       releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
       fromRef: this.options.fromRef || "(no cutoff)",
+      stripModulePrefix: this.options.stripModulePrefix,
+      tagVersionPrefix: this.options.tagVersionPrefix,
     });
   }
 
@@ -183,6 +192,20 @@ export class VersuRunner {
 
     this.configDirectory = path.join(this.options.repoRoot, ".versu");
     this.config = await this.configurationLoader.load(this.configDirectory);
+
+    if (!Handlebars.helpers.getModuleTagName) {
+      Handlebars.registerHelper(
+        "getModuleTagName",
+        (moduleName: string, version: string) => {
+          return getModuleTagName(
+            moduleName,
+            version,
+            this.options.tagVersionPrefix,
+            this.options.stripModulePrefix,
+          );
+        },
+      );
+    }
   }
 
   private async loadPluginsAndResolveAdapter(): Promise<void> {
@@ -236,6 +259,8 @@ export class VersuRunner {
     );
 
     return await this.commitAnalyzer.analyzeCommitsSinceLastRelease(
+      this.options.tagVersionPrefix,
+      this.options.stripModulePrefix,
       this.options.fromRef,
     );
   }
@@ -284,6 +309,8 @@ export class VersuRunner {
     // Initialize version applier and apply changes
     const versionApplierOptions: VersionApplierOptions = {
       dryRun: this.options.dryRun,
+      tagVersionPrefix: this.options.tagVersionPrefix,
+      stripModulePrefix: this.options.stripModulePrefix,
     };
     this.versionApplier = new VersionApplier(
       this.versionManager,
@@ -308,6 +335,8 @@ export class VersuRunner {
       dryRun: this.options.dryRun,
       multiModule,
       filename: this.options.changelogFilename || "CHANGELOG.md",
+      tagVersionPrefix: this.options.tagVersionPrefix,
+      stripModulePrefix: this.options.stripModulePrefix,
       config: this.config.changelog,
       provider: this.options.provider,
     });
@@ -332,6 +361,8 @@ export class VersuRunner {
       dryRun: this.options.dryRun,
       multiModule,
       filename: this.options.releaseNotesFilename || "RELEASE.md",
+      tagVersionPrefix: this.options.tagVersionPrefix,
+      stripModulePrefix: this.options.stripModulePrefix,
       config: this.config.release,
       provider: this.options.provider,
     });
@@ -359,6 +390,8 @@ export class VersuRunner {
       sequentialTagPush: this.options.sequentialTagPush,
       commitReleaseNotes: this.options.commitReleaseNotes,
       releaseNotesFilename: this.options.releaseNotesFilename || "RELEASE.md",
+      tagVersionPrefix: this.options.tagVersionPrefix,
+      stripModulePrefix: this.options.stripModulePrefix,
     };
     this.gitOperations = new GitOperations(gitOperationsOptions);
 
