@@ -65,6 +65,14 @@ inputs:
     description: 'Filename for generated release notes (default: RELEASE.md)'
     required: false
     default: 'RELEASE.md'
+  strip-module-prefix:
+    description: 'Strip module name from tag, when the project has a single module (default: false)'
+    required: false
+    default: 'false'
+  tag-version-prefix:
+    description: "Prefix to add on tag versions (e.g., 'v', default: empty)"
+    required: false
+    default: 'v'
 outputs:
   bumped:
     description: 'Whether any module was bumped'
