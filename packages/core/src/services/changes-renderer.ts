@@ -13,6 +13,8 @@ export type ChangesRendererOptions = {
   dryRun: boolean;
   multiModule: boolean;
   filename: string;
+  tagVersionPrefix: string;
+  stripModulePrefix: boolean;
   config?: ChangesConfig;
   provider?: string;
 };
@@ -45,6 +47,12 @@ export class ChangesRenderer {
       );
     }
 
+    if (moduleResults.length > 1 && this.options.stripModulePrefix) {
+      throw new Error(
+        "Cannot strip module prefix when multiple modules are being processed",
+      );
+    }
+
     logger.info("Rendering changes");
 
     // Generate individual module changes
@@ -56,6 +64,8 @@ export class ChangesRenderer {
       this.options.dryRun,
       this.options.filename,
       this.options.multiModule,
+      this.options.tagVersionPrefix,
+      this.options.stripModulePrefix,
       this.options.config?.module,
       this.options.provider,
     );
@@ -73,6 +83,8 @@ export class ChangesRenderer {
         this.options.repoRoot,
         this.options.dryRun,
         this.options.filename,
+        this.options.tagVersionPrefix,
+        this.options.stripModulePrefix,
         this.options.config?.root,
         this.options.provider,
       );

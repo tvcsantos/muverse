@@ -29,6 +29,8 @@ const commitParser = new CommitParser({
  */
 export async function getCommitsSinceLastTag(
   projectInfo: Module,
+  tagVersionPrefix: string,
+  stripModulePrefix: boolean,
   options: GitOptions = {},
   excludePaths: string[] = [],
   fromRef?: string,
@@ -45,7 +47,13 @@ export async function getCommitsSinceLastTag(
     // Find the most recent tag for this module
     // For root modules, this finds general tags (v1.0.0)
     // For submodules, this finds module-specific tags (module@1.0.0)
-    const lastTag = await getLastTagForModule(projectInfo, fromRef, { cwd });
+    const lastTag = await getLastTagForModule(
+      projectInfo,
+      tagVersionPrefix,
+      stripModulePrefix,
+      fromRef,
+      { cwd },
+    );
 
     logger.debug("Last tag for module found", {
       moduleName: projectInfo.name,
@@ -259,6 +267,64 @@ export async function isCommitBefore(
 }
 
 /**
+ * Gets the most recent git tag for a module matching the specified regex pattern.
+ *
+ * The result hasTags indicates whether any tags matching the regex are found,
+ * regardless of whether they are before or after the fromRef.
+ *
+ * The lastTag is the most recent tag that matches the regex and is before the
+ * fromRef (if provided). If no matching tags exist, lastTag will be null.
+ *
+ * @param tagRegex - Regular expression to match module tags
+ * @param fromRef - Optional Git reference to start analysis from (i.e. the cutoff point for commits to include)
+ * @param options - Git operation options
+ * @returns Object containing a boolean indicating if tags exist and the most recent tag name or null if no tags exist
+ */
+async function getLastTagMatchingRegex(
+  tagRegex: RegExp,
+  fromRef?: string,
+  options: GitOptions = {},
+): Promise<{ hasTags: boolean; lastTag: string | null }> {
+  // Resolve working directory, defaulting to current directory
+  const cwd = options.cwd || process.cwd();
+  logger.debug("Executing git command", {
+    command: `git tag -l --sort=-version:refname`,
+  });
+
+  const { stdout } = await execa(
+    "git",
+    ["tag", "-l", "--sort=-version:refname"],
+    { cwd },
+  );
+
+  const trimmedStdout = stdout.trim();
+
+  // If we found module-specific tags, return the first (most recent)
+  const tags = trimmedStdout
+    .split("\n")
+    .filter(Boolean)
+    .filter((tag) => {
+      // filter tags matching the module tag regex
+      return tagRegex.test(tag);
+    });
+
+  const hasTags = tags.length > 0;
+
+  if (!fromRef) {
+    return { hasTags, lastTag: tags[0] || null };
+  }
+
+  for (const tag of tags) {
+    const isBefore = await isCommitBefore(fromRef, tag, { cwd });
+    if (isBefore) {
+      return { hasTags, lastTag: tag };
+    }
+  }
+
+  return { hasTags, lastTag: null };
+}
+
+/**
  * Finds the most recent git tag for a specific module with fallback to general tags.
  * Searches module-specific tags first (moduleName@*), then falls back to general tags.
  * @param projectInfo - Module information for tag pattern construction
@@ -268,88 +334,46 @@ export async function isCommitBefore(
  */
 export async function getLastTagForModule(
   projectInfo: Module,
+  tagVersionPrefix: string,
+  stripModulePrefix: boolean,
   fromRef?: string,
   options: GitOptions = {},
 ): Promise<string | null> {
   // Resolve working directory, defaulting to current directory
   const cwd = options.cwd || process.cwd();
 
-  logger.debug("Finding last tag for module", {
-    moduleName: projectInfo.name,
-    moduleType: projectInfo.type,
-  });
-
   try {
-    // Generate glob pattern for module-specific tags (e.g., 'api@*')
-    const moduleTagPattern = getModuleTagPattern(projectInfo.name);
+    logger.debug("Finding last tag for module", {
+      moduleName: projectInfo.name,
+      moduleType: projectInfo.type,
+    });
 
-    // Only search for module-specific tags if it's not root and version is declared
-    // Root projects use general tags (v1.0.0) rather than module tags (root@1.0.0)
-    if (projectInfo.type !== "root" && projectInfo.declaredVersion) {
-      // Search for module-specific tags with version sorting
-      // --sort=-version:refname: Sort by version in descending order (newest first)
+    const tagRegex = getModuleTagRegex(
+      projectInfo.name,
+      tagVersionPrefix,
+      stripModulePrefix, // stripModulePrefix true for root modules
+    );
 
-      logger.debug("Executing git command", {
-        command: `git tag -l ${moduleTagPattern} --sort=-version:refname`,
-      });
+    logger.debug("Looking for tags matching regex", { tagRegex });
 
-      const { stdout } = await execa(
-        "git",
-        ["tag", "-l", moduleTagPattern, "--sort=-version:refname"],
-        {
-          cwd,
-        },
-      );
+    let result = await getLastTagMatchingRegex(tagRegex, fromRef, { cwd });
 
-      // If we found module-specific tags, return the first (most recent)
-      if (stdout.trim()) {
-        const tags = stdout.trim().split("\n").filter(Boolean);
-
-        if (!fromRef) return tags[0] || null;
-
-        for (const tag of tags) {
-          const isBefore = await isCommitBefore(fromRef, tag, { cwd });
-          if (isBefore) {
-            return tag;
-          }
-        }
-
-        return null;
-      }
+    if (result.hasTags) {
+      return result.lastTag;
     }
 
-    // Fallback to general tags when:
-    // 1. Module type is 'root', or
-    // 2. No module-specific tags were found
-    try {
-      // git describe finds the most recent tag reachable from HEAD
-      // --tags: Consider all tags (not just annotated)
-      // --abbrev=0: Don't show commit hash suffix
+    const escapedTagVersionPrefix = RegExp.escape(tagVersionPrefix);
+    const regex = new RegExp(
+      `^(.*)${escapedTagVersionPrefix}(\\d+\\.\\d+\\.\\d+.*)$`,
+    );
+    result = await getLastTagMatchingRegex(regex, fromRef, { cwd });
 
-      const range = fromRef ? `${fromRef}..HEAD` : "HEAD";
-
-      logger.debug("Executing git command", {
-        command: `git describe --tags --abbrev=0 ${range}`,
-      });
-
-      const { stdout: fallbackOutput } = await execa(
-        "git",
-        ["describe", "--tags", "--abbrev=0", range],
-        {
-          cwd,
-        },
-      );
-
-      return fallbackOutput.trim();
-    } catch {
-      // If no tags at all, return null
-      // This typically means it's a new repository or no releases yet
-      return null;
-    }
-  } catch (_error) {
-    // Catch-all error handler: return null if any unexpected error occurs
-    // This makes the function non-throwing, which is safer for version calculations
-    return null;
+    return result.lastTag;
+  } catch (error) {
+    // Wrap error with context
+    throw new Error(
+      `Failed to get last tag for module ${projectInfo.name}: ${error}`,
+    );
   }
 }
 
@@ -359,7 +383,10 @@ export async function getLastTagForModule(
  * @param options - Git operation options
  * @returns Promise resolving to array of GitTag objects (empty array if no tags exist)
  */
-export async function getAllTags(options: GitOptions = {}): Promise<GitTag[]> {
+export async function getAllTags(
+  tagVersionPrefix: string,
+  options: GitOptions = {},
+): Promise<GitTag[]> {
   // Resolve working directory
   const cwd = options.cwd || process.cwd();
 
@@ -392,7 +419,7 @@ export async function getAllTags(options: GitOptions = {}): Promise<GitTag[]> {
       .filter((tag) => !!tag)
       .map((tag) => {
         // Parse tag name to extract module and version (if present)
-        const { module, version } = parseTagName(tag.name);
+        const { module, version } = parseTagName(tag.name, tagVersionPrefix);
 
         // Return structured tag object
         return {
@@ -401,10 +428,9 @@ export async function getAllTags(options: GitOptions = {}): Promise<GitTag[]> {
           version,
         };
       });
-  } catch (_error) {
-    // Non-throwing: return empty array if git command fails
-    // This could happen if not in a git repository or no tags exist
-    return [];
+  } catch (error) {
+    // Wrap error with context
+    throw new Error(`Failed to get all git tags: ${error}`);
   }
 }
 
@@ -481,21 +507,46 @@ export async function pushTags(options: GitOptions = {}): Promise<void> {
 }
 
 /**
- * Generates a glob pattern for searching module-specific git tags (moduleName@*).
+ * Generates a regular expression for matching module-specific git tags
+ * and extracting version.
+ *
+ * Supports both prefixed (moduleName@v1.0.0) and non-prefixed (v1.0.0)
+ * formats based on configuration.
+ *
  * @param moduleName - The name of the module
- * @returns A glob pattern string matching all tags for the module
- * @internal
+ * @param tagVersionPrefix - The tag version prefix
+ * @param stripModulePrefix - Whether to strip the module prefix
+ * @returns A RegExp object for matching module-specific tags
  */
-export function getModuleTagPattern(moduleName: string): string {
-  // Create glob pattern for module-specific tags
-  // Format: moduleName@* where * matches any version
-  return `${moduleName}@*`;
+export function getModuleTagRegex(
+  moduleName: string,
+  tagVersionPrefix: string,
+  stripModulePrefix: boolean,
+): RegExp {
+  const escapedTagVersionPrefix = RegExp.escape(tagVersionPrefix);
+
+  const versionTagPattern = `${escapedTagVersionPrefix}(\\d+\\.\\d+\\.\\d+.*)`;
+
+  if (stripModulePrefix) {
+    return new RegExp(`^${versionTagPattern}$`);
+  }
+
+  const escapedModuleName = RegExp.escape(moduleName);
+
+  return new RegExp(`^${escapedModuleName}@${versionTagPattern}$`);
 }
 
-export function getModuleTagName(moduleName: string, version: string): string {
-  // Construct tag name for a module and version
-  // Format: moduleName@version (e.g., 'core@1.0.0')
-  return `${moduleName}@${version}`;
+export function getModuleTagName(
+  moduleName: string,
+  version: string,
+  tagVersionPrefix: string,
+  stripModulePrefix: boolean,
+): string {
+  // Construct tag name for a module, version and prefix
+  if (stripModulePrefix) {
+    return `${tagVersionPrefix}${version}`;
+  }
+  return `${moduleName}@${tagVersionPrefix}${version}`;
 }
 
 /**
@@ -510,22 +561,26 @@ export function getModuleTagName(moduleName: string, version: string): string {
  * @param tagName - The full git tag name to parse.
  *                  Can be any string, but structured formats are recognized.
  *
+ * @param prefix - The expected version prefix (e.g., 'v') to identify version tags.
+ *
  * @returns Object with optional `module` and `version` fields:
  *          - Both present: Module tag (e.g., `core@1.0.0`)
  *          - Only version: General tag (e.g., `v1.0.0`)
  *          - Empty object: Unrecognized format
  * @internal
  */
-export function parseTagName(tagName: string): {
+export function parseTagName(
+  tagName: string,
+  prefix: string,
+): {
   module?: string;
   version?: string;
 } {
-  // Try to match module-specific tag pattern: moduleName@version
-  // Regex: ^(.+)@(.+)$
-  //   ^(.+)  - Start of string, capture group 1 (module name, greedy)
-  //   @      - Literal @ separator
-  //   (.+)$  - Capture group 2 (version, greedy), end of string
-  const match = tagName.match(/^(.+)@(.+)$/);
+  const escapedPrefix = RegExp.escape(prefix);
+  const tagVersionPattern = `${escapedPrefix}(\\d+\\.\\d+\\.\\d+.*)`;
+
+  // Try to match module-specific tag pattern: moduleName@<prefix>MAJOR.MINOR.PATCH...
+  const match = tagName.match(new RegExp(`^(.+)@${tagVersionPattern}$`));
 
   if (match) {
     // Module tag matched - return both components
@@ -535,12 +590,8 @@ export function parseTagName(tagName: string): {
     };
   }
 
-  // Try to match version-only tag pattern: v?MAJOR.MINOR.PATCH...
-  // Regex: ^v?(\d+\.\d+\.\d+.*)$
-  //   ^v?           - Start, optional 'v' prefix
-  //   (\d+\.\d+\.\d+  - Capture group: MAJOR.MINOR.PATCH (digits)
-  //   .*)$          - Any remaining characters (pre-release, metadata), end
-  const versionMatch = tagName.match(/^v?(\d+\.\d+\.\d+.*)$/);
+  // Try to match version-only tag pattern: <prefix>MAJOR.MINOR.PATCH...
+  const versionMatch = tagName.match(new RegExp(`^${tagVersionPattern}$`));
   if (versionMatch) {
     // Version tag matched - return only version (no module)
     return {

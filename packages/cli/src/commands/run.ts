@@ -103,6 +103,16 @@ export default class Run extends Command {
       description: "Version control provider (e.g., github, gitlab)",
       required: false,
     }),
+    "strip-module-prefix": Flags.boolean({
+      description:
+        "Strip module name from tag, when the project has a single module (default: false)",
+      default: false,
+    }),
+    "tag-version-prefix": Flags.string({
+      description: "Prefix to add on tag versions (e.g., 'v', default: empty)",
+      required: false,
+      default: "",
+    }),
   };
 
   async run(): Promise<void> {
@@ -127,6 +137,8 @@ export default class Run extends Command {
         dryRun: flags["dry-run"],
         sequentialTagPush: flags["sequential-tag-push"],
         commitReleaseNotes: flags["commit-release-notes"],
+        stripModulePrefix: flags["strip-module-prefix"],
+        tagVersionPrefix: flags["tag-version-prefix"],
         changelogFilename: flags["changelog-filename"],
         releaseNotesFilename: flags["release-notes-filename"],
         fromRef: flags["from-ref"],

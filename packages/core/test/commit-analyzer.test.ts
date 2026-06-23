@@ -72,7 +72,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
 
       // Mock getCommitsSinceLastTag to return different commits based on excludePaths
       vi.mocked(gitIndex.getCommitsSinceLastTag).mockImplementation(
-        async (projectInfo, options, excludePaths = []) => {
+        async (projectInfo, tagVersionPrefix, stripModulePrefix, options, excludePaths = []) => {
           if (projectInfo.path === './core') {
             // Core should have called with exclusions for api and impl
             expect(excludePaths).toContain('./core/api');
@@ -93,7 +93,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
 
       // Analyze commits
       const commitAnalyzer = new CommitAnalyzer(moduleRegistry, '/repo');
-      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease();
+      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease('v', false);
 
       // Verify each module got the correct commits
       expect(result.get(':core')).toEqual({commits: coreCommits, lastTag: null});
@@ -141,7 +141,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       moduleRegistry = new MapModuleRegistry(hierarchyResult);
 
       vi.mocked(gitIndex.getCommitsSinceLastTag).mockImplementation(
-        async (projectInfo, options, excludePaths = []) => {
+        async (projectInfo, tagVersionPrefix, stripModulePrefix, options, excludePaths = []) => {
           if (projectInfo.path === './services') {
             // Services should exclude both api and api/v1
             expect(excludePaths).toContain('./services/api');
@@ -162,7 +162,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       );
 
       const commitAnalyzer = new CommitAnalyzer(moduleRegistry, '/repo');
-      await commitAnalyzer.analyzeCommitsSinceLastRelease();
+      await commitAnalyzer.analyzeCommitsSinceLastRelease('v', false);
 
       // Verify the mock was called with correct exclusions (assertions are in mock implementation)
       expect(vi.mocked(gitIndex.getCommitsSinceLastTag)).toHaveBeenCalledTimes(3);
@@ -212,7 +212,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       ];
 
       vi.mocked(gitIndex.getCommitsSinceLastTag).mockImplementation(
-        async (projectInfo, options, excludePaths = []) => {
+        async (projectInfo, tagVersionPrefix, stripModulePrefix, options, excludePaths = []) => {
           if (projectInfo.path === '.') {
             // Root should exclude all submodules
             expect(excludePaths).toContain('./core');
@@ -225,7 +225,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       );
 
       const commitAnalyzer = new CommitAnalyzer(moduleRegistry, '/repo');
-      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease();
+      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease('v', false);
 
       // Root should have its commits with all submodules excluded
       expect(result.get(':')).toEqual({commits: rootCommits, lastTag: null});
@@ -269,7 +269,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       ];
 
       vi.mocked(gitIndex.getCommitsSinceLastTag).mockImplementation(
-        async (projectInfo, options, excludePaths = []) => {
+        async (projectInfo, tagVersionPrefix, stripModulePrefix, options, excludePaths = []) => {
           // Neither module has child modules, so excludePaths should be empty
           expect(excludePaths).toEqual([]);
           
@@ -283,7 +283,7 @@ describe('CommitAnalyzer - Child Module Exclusion', () => {
       );
 
       const commitAnalyzer = new CommitAnalyzer(moduleRegistry, '/repo');
-      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease();
+      const result = await commitAnalyzer.analyzeCommitsSinceLastRelease('v', false);
 
       // Both modules should get their commits without any filtering
       expect(result.get(':utils')).toEqual({commits: utilsCommits, lastTag: null});

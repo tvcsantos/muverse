@@ -75,6 +75,8 @@ export async function generateChangesForModules(
   dryRun: boolean,
   filename: string,
   multiModule: boolean,
+  tagVersionPrefix: string,
+  stripModulePrefix: boolean,
   config?: ModuleChangesConfig,
   provider?: string,
 ): Promise<ChangesRendererResult[]> {
@@ -129,7 +131,12 @@ export async function generateChangesForModules(
     const isRelease = isReleaseVersion(moduleResult.to);
     const version = isRelease ? moduleResult.to : undefined;
     const currentTag = isRelease
-      ? `${moduleResult.name}@${moduleResult.to}`
+      ? getModuleTagName(
+          moduleResult.name,
+          moduleResult.to,
+          tagVersionPrefix,
+          stripModulePrefix,
+        )
       : undefined;
     const previousTag = lastTag || undefined;
 
@@ -139,7 +146,7 @@ export async function generateChangesForModules(
         version: version,
         previousTag: previousTag,
         previousTagVersion: previousTag
-          ? parseTagName(previousTag).version
+          ? parseTagName(previousTag, tagVersionPrefix).version
           : undefined,
         currentTag: currentTag,
         linkCompare: previousTag && currentTag ? true : false,
@@ -174,6 +181,8 @@ export async function generateRootChanges(
   repoRoot: string,
   dryRun: boolean,
   filename: string,
+  tagVersionPrefix: string,
+  stripeModulePrefix: boolean,
   config?: ModuleChangesConfig,
   provider?: string,
 ): Promise<ChangesRendererResult | undefined> {
@@ -219,7 +228,12 @@ export async function generateRootChanges(
   const isRelease = isReleaseVersion(moduleResult.to);
   const version = isRelease ? moduleResult.to : undefined;
   const currentTag = isRelease
-    ? getModuleTagName(moduleResult.name, moduleResult.to)
+    ? getModuleTagName(
+        moduleResult.name,
+        moduleResult.to,
+        tagVersionPrefix,
+        stripeModulePrefix,
+      )
     : undefined;
   const previousTag = lastTag || undefined;
 
@@ -230,7 +244,7 @@ export async function generateRootChanges(
       version: version,
       previousTag: previousTag,
       previousTagVersion: previousTag
-        ? parseTagName(previousTag).version
+        ? parseTagName(previousTag, tagVersionPrefix).version
         : undefined,
       currentTag: currentTag,
       linkCompare: previousTag && currentTag ? true : false,

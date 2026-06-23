@@ -7,7 +7,7 @@ export const mainReleaseRootTemplate = `## What's changed
 {{#if declaredVersion}}
 {{#if (ne type "root")}}
 {{#if isRelease}}
-- [{{name}}]({{path}}/CHANGELOG.md) - [{{to}}]({{@root.repoUrl}}/compare/{{name}}@{{from}}...{{name}}@{{to}})
+- [{{name}}]({{path}}/CHANGELOG.md) - [{{to}}]({{@root.repoUrl}}/compare/{{getModuleTagName name from}}...{{getModuleTagName name to}})
 {{else}}
 - [{{name}}]({{path}}/CHANGELOG.md) - Unreleased
 {{/if}}
