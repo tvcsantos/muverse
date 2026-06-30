@@ -265165,7 +265165,7 @@ class AdapterMetadataProvider {
     async getSpecifiedAdapter() {
         if (!this.adapterId)
             return null;
-        const identifier = this.adapterIdentifierRegistry.getIdentifierById(this.adapterId);
+        const identifier = await this.adapterIdentifierRegistry.getIdentifierById(this.adapterId);
         if (!identifier) {
             throw new Error(`Unsupported adapter '${this.adapterId}'. Supported adapters: ${this.adapterIdentifierRegistry
                 .getSupportedAdapters()
@@ -265200,23 +265200,23 @@ class AdapterMetadataProvider {
  * Provides automatic project adapter detection, fast lookup by ID, and discovery of supported adapters.
  */
 class AdapterIdentifierRegistry {
-    identifiers;
+    identifiersFactory;
     /**
      * Internal map of adapter identifiers keyed by their unique ID.
      */
-    identifiersMap;
+    identifiers;
     /**
      * Cached array of all supported adapter IDs.
      */
     supportedAdapters;
     /**
      * Creates a new adapter identifier registry.
-     * @param identifiers - Array of adapter identifiers to register
+     * @param identifiers - Map of adapter identifiers to register, keyed by their unique ID
      */
-    constructor(identifiers) {
-        this.identifiers = identifiers;
-        this.identifiersMap = new Map(identifiers.map((id) => [id.metadata.id, id]));
-        this.supportedAdapters = Array.from(this.identifiersMap.keys());
+    constructor(identifiersFactory) {
+        this.identifiersFactory = identifiersFactory;
+        this.identifiers = new Map();
+        this.supportedAdapters = Array.from(this.identifiersFactory.keys());
     }
     /**
      * Automatically identifies which adapter can handle the specified project.
@@ -265224,8 +265224,11 @@ class AdapterIdentifierRegistry {
      * @returns A promise that resolves to the first matching adapter, or `null` if no adapter can handle the project
      */
     async identify(projectRoot) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for (const identifier of this.identifiers) {
+        for (const id of this.supportedAdapters) {
+            const identifier = await this.getIdentifierById(id);
+            if (!identifier) {
+                throw new Error(`Adapter identifier for '${id}' is not registered in the registry.`);
+            }
             try {
                 const result = await identifier.accept(projectRoot);
                 if (result) {
@@ -265245,8 +265248,16 @@ class AdapterIdentifierRegistry {
      * @param id - The unique identifier of the adapter to retrieve
      * @returns The adapter if found, or `null` if not registered
      */
-    getIdentifierById(id) {
-        return this.identifiersMap.get(id) || null;
+    async getIdentifierById(id) {
+        let identifier = this.identifiers.get(id);
+        if (identifier)
+            return identifier;
+        const factory = this.identifiersFactory.get(id);
+        if (!factory)
+            return null;
+        identifier = await factory.create();
+        this.identifiers.set(id, identifier);
+        return identifier;
     }
     /**
      * Returns a list of all supported adapter IDs in this registry.
@@ -265265,13 +265276,14 @@ class AdapterIdentifierRegistry {
 async function createAdapterIdentifierRegistry(plugins, configDirectory) {
     // Array of all registered adapter identifiers
     // Order matters: first matching adapter is selected during auto-detection
-    const identifiers = [];
+    const identifiersFactoryMap = new Map();
     const adapters = plugins.flatMap((x) => x.adapters);
     for (const adapter of adapters) {
-        identifiers.push(await adapter.adapterIdentifier(configDirectory));
+        const adapterIdentifierFactory = await adapter.adapterIdentifierFactory(configDirectory);
+        identifiersFactoryMap.set(adapterIdentifierFactory.id, adapterIdentifierFactory);
     }
     // Create and return the registry with all registered identifiers
-    return new AdapterIdentifierRegistry(identifiers);
+    return new AdapterIdentifierRegistry(identifiersFactoryMap);
 }
 
 /**
@@ -265309,7 +265321,7 @@ class ConfigurationValidatorFactory {
 
 // This file is auto-generated. Do not edit manually.
 // Run 'npm run generate-version' to update this file.
-const VERSION$7 = "3.1.0";
+const VERSION$7 = "3.1.1";
 const PACKAGE_NAME$1 = "@versu/core";
 const AUTHORS = ["tvcsantos"];
 
@@ -271042,6 +271054,14 @@ const adapterIdentifierSchema = object({
     }),
 })
     .loose();
+const adapterIdentifierFactorySchema = object({
+    id: string(),
+    create: _function({
+        input: [],
+        output: promise(adapterIdentifierSchema),
+    }),
+})
+    .loose();
 const versionSchema = object({
     major: number(),
     minor: number(),
@@ -271115,9 +271135,9 @@ const moduleSystemFactorySchema = object({
     .loose();
 const adapterPluginContractSchema = object({
     id: string(),
-    adapterIdentifier: _function({
+    adapterIdentifierFactory: _function({
         input: [string()],
-        output: promise(adapterIdentifierSchema),
+        output: promise(adapterIdentifierFactorySchema),
     }),
     moduleSystemFactory: _function({
         input: [string(), string()],
@@ -271439,6 +271459,29 @@ const configSchemaWithDefaults = object({
         .optional(),
 });
 
+/** Unique identifier for the Manual adapter ('manual'). */
+const MANUAL_ID = "manual";
+
+class ManualAdapterIdentifierFactory {
+    configDirectory;
+    id = MANUAL_ID;
+    constructor(configDirectory) {
+        this.configDirectory = configDirectory;
+    }
+    async create() {
+        const projectInformationPath = getProjectInformationPath(this.configDirectory);
+        const hasProjectInformationFile = await exists(projectInformationPath);
+        if (!hasProjectInformationFile) {
+            throw new Error("Project Information file not found");
+        }
+        const projectInformation = await readRawProjectInformation(this.configDirectory);
+        const metadata = {
+            id: MANUAL_ID,
+            capabilities: projectInformation.capabilities,
+        };
+        return new ManualAdapterIdentifier(metadata, true);
+    }
+}
 /**
  * Adapter identifier for Manually configured projects.
  * Detects Manually configured projects by looking for project-information.json in the config directory.
@@ -271563,9 +271606,6 @@ class ManualModuleSystemFactory {
     }
 }
 
-/** Unique identifier for the Manual adapter ('manual'). */
-const MANUAL_ID = "manual";
-
 const manualPlugin = {
     id: MANUAL_ID,
     name: "Manual",
@@ -271576,19 +271616,7 @@ const manualPlugin = {
     adapters: [
         {
             id: MANUAL_ID,
-            adapterIdentifier: async (configDirectory) => {
-                const projectInformationPath = getProjectInformationPath(configDirectory);
-                const hasProjectInformationFile = await exists(projectInformationPath);
-                if (!hasProjectInformationFile) {
-                    throw new Error("Project Information file not found");
-                }
-                const projectInformation = await readRawProjectInformation(configDirectory);
-                const metadata = {
-                    id: MANUAL_ID,
-                    capabilities: projectInformation.capabilities,
-                };
-                return new ManualAdapterIdentifier(metadata, true);
-            },
+            adapterIdentifierFactory: async (configDirectory) => new ManualAdapterIdentifierFactory(configDirectory),
             moduleSystemFactory: async (repoRoot, configDirectory) => new ManualModuleSystemFactory(repoRoot, configDirectory),
         },
     ],
@@ -272038,7 +272066,7 @@ function parseBooleanInput(input) {
 }
 
 // This file is auto-generated. Do not edit manually.
-const VERSION$6 = "3.1.0";
+const VERSION$6 = "3.1.1";
 const PACKAGE_NAME = "@versu/action";
 
 class Context {

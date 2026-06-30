@@ -1,15 +1,8 @@
-import { ManualAdapterIdentifier } from "./services/manual-adapter-identifier.js";
+import { ManualAdapterIdentifierFactory } from "./services/manual-adapter-identifier.js";
 import { ManualModuleSystemFactory } from "./services/manual-module-system-factory.js";
 import { AUTHORS, VERSION } from "../../utils/version.js";
 import { MANUAL_ID } from "./constants.js";
-import {
-  getProjectInformationPath,
-  readRawProjectInformation,
-} from "../../services/project-information.js";
 import { OrderedPluginContract } from "../types.js";
-import { exists } from "../../utils/file.js";
-import { ManualProjectInformation } from "./manual-project-information.js";
-import { AdapterMetadata } from "../../services/adapter-identifier.js";
 import { LOWEST_PRECEDENCE } from "../plugin-loader.js";
 
 const manualPlugin: OrderedPluginContract = {
@@ -23,26 +16,8 @@ const manualPlugin: OrderedPluginContract = {
   adapters: [
     {
       id: MANUAL_ID,
-      adapterIdentifier: async (configDirectory: string) => {
-        const projectInformationPath =
-          getProjectInformationPath(configDirectory);
-
-        const hasProjectInformationFile = await exists(projectInformationPath);
-
-        if (!hasProjectInformationFile) {
-          throw new Error("Project Information file not found");
-        }
-
-        const projectInformation: ManualProjectInformation =
-          await readRawProjectInformation(configDirectory);
-
-        const metadata: AdapterMetadata = {
-          id: MANUAL_ID,
-          capabilities: projectInformation.capabilities,
-        };
-
-        return new ManualAdapterIdentifier(metadata, true);
-      },
+      adapterIdentifierFactory: async (configDirectory: string) => 
+        new ManualAdapterIdentifierFactory(configDirectory),
       moduleSystemFactory: async (repoRoot: string, configDirectory: string) =>
         new ManualModuleSystemFactory(repoRoot, configDirectory),
     },

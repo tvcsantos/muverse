@@ -1,4 +1,4 @@
-import { AdapterIdentifier } from "../services/adapter-identifier.js";
+import { AdapterIdentifierFactory } from "../services/adapter-identifier-factory.js";
 import { ModuleSystemFactory } from "../services/module-system-factory.js";
 import { Ordered } from "../utils/ordered.js";
 
@@ -15,7 +15,9 @@ export type OrderedPluginContract = PluginContract & Ordered;
 
 export type AdapterPluginContract = {
   readonly id: string;
-  adapterIdentifier: (configDirectory: string) => Promise<AdapterIdentifier>;
+  adapterIdentifierFactory: (
+    configDirectory: string,
+  ) => Promise<AdapterIdentifierFactory>;
   moduleSystemFactory: (
     repoRoot: string,
     configDirectory: string,

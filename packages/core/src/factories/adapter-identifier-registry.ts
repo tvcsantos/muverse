@@ -1,4 +1,5 @@
 import { PluginContract } from "../plugins/types.js";
+import { AdapterIdentifierFactory } from "../services/adapter-identifier-factory.js";
 import { AdapterIdentifierRegistry } from "../services/adapter-identifier-registry.js";
 
 /**
@@ -12,12 +13,18 @@ export async function createAdapterIdentifierRegistry(
 ): Promise<AdapterIdentifierRegistry> {
   // Array of all registered adapter identifiers
   // Order matters: first matching adapter is selected during auto-detection
-  const identifiers = [];
+  const identifiersFactoryMap: Map<string, AdapterIdentifierFactory> =
+    new Map();
   const adapters = plugins.flatMap((x) => x.adapters);
   for (const adapter of adapters) {
-    identifiers.push(await adapter.adapterIdentifier(configDirectory));
+    const adapterIdentifierFactory =
+      await adapter.adapterIdentifierFactory(configDirectory);
+    identifiersFactoryMap.set(
+      adapterIdentifierFactory.id,
+      adapterIdentifierFactory,
+    );
   }
 
   // Create and return the registry with all registered identifiers
-  return new AdapterIdentifierRegistry(identifiers);
+  return new AdapterIdentifierRegistry(identifiersFactoryMap);
 }

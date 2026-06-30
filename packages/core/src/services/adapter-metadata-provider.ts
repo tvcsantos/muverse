@@ -59,7 +59,7 @@ export class AdapterMetadataProvider {
   private async getSpecifiedAdapter(): Promise<AdapterIdentifier | null> {
     if (!this.adapterId) return null;
 
-    const identifier = this.adapterIdentifierRegistry.getIdentifierById(
+    const identifier = await this.adapterIdentifierRegistry.getIdentifierById(
       this.adapterId,
     );
 

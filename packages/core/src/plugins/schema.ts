@@ -29,6 +29,16 @@ const adapterIdentifierSchema = z
   })
   .loose();
 
+const adapterIdentifierFactorySchema = z
+  .object({
+    id: z.string(),
+    create: z.function({
+      input: [],
+      output: z.promise(adapterIdentifierSchema),
+    }),
+  })
+  .loose();
+
 const versionSchema = z
   .object({
     major: z.number(),
@@ -117,9 +127,9 @@ const moduleSystemFactorySchema = z
 const adapterPluginContractSchema = z
   .object({
     id: z.string(),
-    adapterIdentifier: z.function({
+    adapterIdentifierFactory: z.function({
       input: [z.string()],
-      output: z.promise(adapterIdentifierSchema),
+      output: z.promise(adapterIdentifierFactorySchema),
     }),
     moduleSystemFactory: z.function({
       input: [z.string(), z.string()],

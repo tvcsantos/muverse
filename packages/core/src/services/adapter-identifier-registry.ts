@@ -1,3 +1,4 @@
+import { AdapterIdentifierFactory } from "./adapter-identifier-factory.js";
 import { AdapterIdentifier } from "./adapter-identifier.js";
 
 /**
@@ -8,7 +9,7 @@ export class AdapterIdentifierRegistry {
   /**
    * Internal map of adapter identifiers keyed by their unique ID.
    */
-  private readonly identifiersMap: ReadonlyMap<string, AdapterIdentifier>;
+  private readonly identifiers: Map<string, AdapterIdentifier>;
 
   /**
    * Cached array of all supported adapter IDs.
@@ -17,13 +18,16 @@ export class AdapterIdentifierRegistry {
 
   /**
    * Creates a new adapter identifier registry.
-   * @param identifiers - Array of adapter identifiers to register
+   * @param identifiers - Map of adapter identifiers to register, keyed by their unique ID
    */
-  constructor(private readonly identifiers: AdapterIdentifier[]) {
-    this.identifiersMap = new Map(
-      identifiers.map((id) => [id.metadata.id, id]),
-    );
-    this.supportedAdapters = Array.from(this.identifiersMap.keys());
+  constructor(
+    private readonly identifiersFactory: ReadonlyMap<
+      string,
+      AdapterIdentifierFactory
+    >,
+  ) {
+    this.identifiers = new Map();
+    this.supportedAdapters = Array.from(this.identifiersFactory.keys());
   }
 
   /**
@@ -32,8 +36,13 @@ export class AdapterIdentifierRegistry {
    * @returns A promise that resolves to the first matching adapter, or `null` if no adapter can handle the project
    */
   async identify(projectRoot: string): Promise<AdapterIdentifier | null> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const identifier of this.identifiers) {
+    for (const id of this.supportedAdapters) {
+      const identifier = await this.getIdentifierById(id);
+      if (!identifier) {
+        throw new Error(
+          `Adapter identifier for '${id}' is not registered in the registry.`,
+        );
+      }
       try {
         const result = await identifier.accept(projectRoot);
         if (result) {
@@ -54,8 +63,16 @@ export class AdapterIdentifierRegistry {
    * @param id - The unique identifier of the adapter to retrieve
    * @returns The adapter if found, or `null` if not registered
    */
-  getIdentifierById(id: string): AdapterIdentifier | null {
-    return this.identifiersMap.get(id) || null;
+  async getIdentifierById(id: string): Promise<AdapterIdentifier | null> {
+    let identifier = this.identifiers.get(id);
+    if (identifier) return identifier;
+
+    const factory = this.identifiersFactory.get(id);
+    if (!factory) return null;
+
+    identifier = await factory.create();
+    this.identifiers.set(id, identifier);
+    return identifier;
   }
 
   /**
