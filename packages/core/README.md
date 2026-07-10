@@ -54,6 +54,10 @@ type RunnerOptions = {
   generateReleaseNotes: boolean; // Generate release notes files (e.g. RELEASE.md)
   pushChanges: boolean; // Commit and push version changes to remote
   dryRun: boolean; // Preview changes without writing anything
+  sequentialTagPush: boolean; // Push tags one by one instead of all at once
+  commitReleaseNotes: boolean; // Include release notes in the version commit
+  stripModulePrefix: boolean; // Strip module name from tags (single-module projects)
+  tagVersionPrefix: string; // Prefix for tag versions (e.g., 'v'; use '' for none)
 
   // Optional
   adapter?: string; // Language adapter ID (auto-detected if omitted)
@@ -70,10 +74,10 @@ type RunnerOptions = {
 type RunnerResult = {
   bumped: boolean; // Whether any version was updated
   discoveredModules: Array<Module>; // All modules found in the repository
-  changedModules: Array<ModuleChangeResult>; // Modules whose version changed
-  createdTags: string[]; // Git tags that were created
-  changelogPaths: string[]; // Generated changelog file paths
-  releaseNotesPaths: string[]; // Generated release notes file paths
+  changedModules: Array<ModuleChangeResult>; // Modules whose version changed ({ id, from, to })
+  createdTags: CreatedTagResult[]; // Created tags ({ moduleId, tag })
+  changelogPaths: ChangesRendererResult[]; // Generated changelog files ({ moduleId, path })
+  releaseNotesPaths: ChangesRendererResult[]; // Generated release notes files ({ moduleId, path })
 };
 ```
 
@@ -87,6 +91,7 @@ You can provide configuration in any of the supported config files (e.g., `.vers
 
 ```json
 {
+  "plugins": ["@versu/plugin-gradle"],
   "versioning": {
     "breakingChange": {
       "stable": "major",
@@ -113,9 +118,10 @@ You can provide configuration in any of the supported config files (e.g., `.vers
         "patch": "patch"
       },
       "prerelease": {
-        "major": "premajor",
-        "minor": "preminor",
-        "patch": "prepatch"
+        "premajor": "premajor",
+        "preminor": "preminor",
+        "prepatch": "prepatch",
+        "prerelease": "prerelease"
       }
     }
   },
@@ -159,9 +165,11 @@ import {
   type AdapterMetadata,
   type ModuleDetector,
   type ProjectInformation,
+  type RawProjectInformation,
   type VersionUpdateStrategy,
   type ModuleRegistry,
   type ModuleSystemFactory,
+  getProjectInformationFromRawData,
   exists,
 } from "@versu/core";
 
@@ -180,36 +188,32 @@ class MyAdapterIdentifier implements AdapterIdentifier {
 
 // 2. Module detector for discovering project structure
 class MyModuleDetector implements ModuleDetector {
-  constructor(
-    readonly repoRoot: string,
-    readonly outputFile: string,
-  ) {}
+  constructor(readonly repoRoot: string) {}
 
   async detect(): Promise<ProjectInformation> {
-    // Discover and return modules and dependencies
-    return {
-      moduleIds: ["root", "module-a"],
-      modules: [
-        {
-          id: "root",
-          name: "root",
-          path: this.repoRoot,
-          type: "root",
-          affectedModules: new Set(["module-a"]),
-          version: "1.0.0",
-          declaredVersion: false,
-        },
-        {
-          id: "module-a",
-          name: "module-a",
-          path: join(this.repoRoot, "module-a"),
-          type: "module",
-          affectedModules: new Set([]),
-          version: "2.0.0",
-          declaredVersion: true,
-        },
-      ],
+    // Discover modules and dependencies, then convert the raw
+    // structure with getProjectInformationFromRawData.
+    // Module IDs are Gradle-style (':' for root, ':module-a', ':libs:utils');
+    // exactly one module of type 'root' is required.
+    const raw: RawProjectInformation = {
+      ":": {
+        name: "root",
+        path: ".",
+        type: "root",
+        affectedModules: [":module-a"],
+        declaredVersion: false,
+      },
+      ":module-a": {
+        name: "module-a",
+        path: "module-a",
+        type: "module",
+        affectedModules: [],
+        version: "2.0.0",
+        declaredVersion: true,
+      },
     };
+
+    return getProjectInformationFromRawData(raw);
   }
 }
 
@@ -231,13 +235,13 @@ class MyVersionUpdateStrategy implements VersionUpdateStrategy {
 class MyModuleSystemFactory implements ModuleSystemFactory {
   constructor(private readonly repoRoot: string) {}
 
-  createDetector(outputFile: string): ModuleDetector {
-    return new MyModuleDetector(this.repoRoot, outputFile);
+  async createDetector(outputFile: string): Promise<ModuleDetector> {
+    return new MyModuleDetector(this.repoRoot);
   }
 
-  createVersionUpdateStrategy(
+  async createVersionUpdateStrategy(
     moduleRegistry: ModuleRegistry,
-  ): VersionUpdateStrategy {
+  ): Promise<VersionUpdateStrategy> {
     return new MyVersionUpdateStrategy(moduleRegistry);
   }
 }
@@ -253,12 +257,15 @@ const myPlugin: PluginContract = {
   name: "My Adapter",
   description: "Support for my build system",
   version: "1.0.0",
-  author: "Your Name",
+  authors: ["Your Name"],
   adapters: [
     {
       id: "my-adapter",
-      adapterIdentifier: () => new MyAdapterIdentifier(),
-      moduleSystemFactory: (repoRoot: string) =>
+      adapterIdentifierFactory: async (_configDirectory: string) => ({
+        id: "my-adapter",
+        create: async () => new MyAdapterIdentifier(),
+      }),
+      moduleSystemFactory: async (repoRoot: string, _configDirectory: string) =>
         new MyModuleSystemFactory(repoRoot),
     },
   ],
@@ -266,6 +273,8 @@ const myPlugin: PluginContract = {
 
 export default myPlugin;
 ```
+
+Publish the package with a name matching one of the discovery patterns (`versu-plugin-*`, `@*/versu-plugin-*`, `@versu/plugin-*`) so Versu can auto-detect it from `node_modules`, or reference it explicitly in the `plugins` array of your configuration.
 
 See [@versu/plugin-gradle][plugin-gradle] for a complete implementation example.
 

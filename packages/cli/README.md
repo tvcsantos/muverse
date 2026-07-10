@@ -94,13 +94,18 @@ Calculate and apply semantic version changes.
 | `--append-snapshot` | Add -SNAPSHOT suffix to all versions if supported by adapter | `false` |
 | `--create-tags` | Create git tags for new versions | `true` |
 | `--generate-changelog` | Generate or update changelog files for changed modules | `true` |
+| `--generate-release-notes` | Generate release notes summarizing all changes | `true` |
 | `--push-changes` | Commit and push version changes and changelogs to remote | `true` |
 | `--dry-run` | Run without writing or pushing changes | `false` |
+| `--sequential-tag-push` | Push tags sequentially instead of all at once | `false` |
+| `--commit-release-notes` | Include release notes in the commit when pushing changes | `false` |
 | `--adapter <value>` | Language adapter (e.g., gradle). Auto-detected if not provided | - |
 | `--changelog-filename <value>` | Filename for generated changelog | `CHANGELOG.md` |
 | `--release-notes-filename <value>` | Filename for generated release notes | `RELEASE.md` |
 | `--from-ref <value>` | Git ref to compare from (e.g., previous tag or commit SHA) | - |
 | `--provider <value>` | Version control provider (e.g., github, gitlab) | - |
+| `--strip-module-prefix` | Strip module name from tags when the project has a single module | `false` |
+| `--tag-version-prefix <value>` | Prefix to add on tag versions (e.g., `v`) | - |
 
 ## Examples
 
@@ -151,7 +156,7 @@ versu run --prerelease-mode --bump-unchanged
 Test without committing or pushing:
 
 ```bash
-versu run --dry-run --no-push-changes --no-push-tags
+versu run --dry-run --no-push-changes --no-create-tags
 ```
 
 ### Manual Git Operations
@@ -159,7 +164,7 @@ versu run --dry-run --no-push-changes --no-push-tags
 Calculate versions without automatic git operations:
 
 ```bash
-versu run --no-push-changes --no-push-tags
+versu run --no-push-changes --no-create-tags
 ```
 
 Then manually review, commit, and push.
@@ -202,9 +207,10 @@ You can provide configuration in any of the supported config files (e.g., `.vers
         "patch": "patch"
       },
       "prerelease": {
-        "major": "premajor",
-        "minor": "preminor",
-        "patch": "prepatch"
+        "premajor": "premajor",
+        "preminor": "preminor",
+        "prepatch": "prepatch",
+        "prerelease": "prerelease"
       }
     }
   },
@@ -254,9 +260,15 @@ module.exports = {
 };
 ```
 
-## Gradle Project Support
+## Build System Support
 
-Gradle support is provided by the **[@versu/plugin-gradle][plugin-gradle]** package. For more details please refer to the [plugin documentation][plugin-gradle].
+Build system support is provided by adapter plugins:
+
+- **[@versu/plugin-gradle][plugin-gradle]** - Gradle (Groovy & Kotlin DSL)
+- **[@versu/plugin-maven][plugin-maven]** - Maven
+- **[@versu/plugin-node][plugin-node]** - Node.js (npm, yarn and pnpm workspaces)
+
+For more details please refer to each plugin documentation.
 
 ## Commit Message Format
 
@@ -364,7 +376,7 @@ If you get permission errors when pushing:
 
 1. Ensure you have proper git credentials configured
 2. Check if you have write access to the repository
-3. Use `--no-push-changes --no-push-tags` to skip git operations
+3. Use `--no-push-changes --no-create-tags` to skip git operations
 
 ### No Version Bump Detected
 
@@ -416,9 +428,13 @@ npm publish --workspace packages/cli --access public
 - **[@versu/core](../core)** - Core library for custom integrations
 - **[@versu/action](../action)** - GitHub Actions integration
 - **[@versu/plugin-gradle][plugin-gradle]** - Gradle adapter plugin
+- **[@versu/plugin-maven][plugin-maven]** - Maven adapter plugin
+- **[@versu/plugin-node][plugin-node]** - Node.js adapter plugin
 
 ## License
 
 MIT License - see [LICENSE](../../LICENSE) for details.
 
 [plugin-gradle]: https://github.com/versuhq/plugin-gradle
+[plugin-maven]: https://github.com/versuhq/plugin-maven
+[plugin-node]: https://github.com/versuhq/plugin-node

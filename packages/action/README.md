@@ -38,7 +38,7 @@ jobs:
 
       - name: Versu Semantic Evolution
         id: versu
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           dry-run: false
           # Optional - Versu will auto-detect your project type
@@ -60,7 +60,7 @@ If auto-detection fails, Versu will throw an error asking you to explicitly spec
 
 ```yaml
 - name: Versu Semantic Evolution
-  uses: versuhq/versu@v0
+  uses: versuhq/versu@v3
   with:
     # Required if auto-detection fails
     adapter: gradle
@@ -93,7 +93,7 @@ jobs:
         run: npm install -g @versu/plugin-gradle
 
       - name: Create pre-release versions
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           prerelease-mode: true
           prerelease-id: alpha
@@ -126,7 +126,7 @@ jobs:
         run: npm install -g @versu/plugin-gradle
 
       - name: Create timestamp versions
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           prerelease-mode: true
           prerelease-id: alpha
@@ -164,7 +164,7 @@ jobs:
         run: npm install -g @versu/plugin-gradle
 
       - name: Create Gradle SNAPSHOT versions
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           append-snapshot: true
 ```
@@ -183,27 +183,32 @@ This applies `-SNAPSHOT` suffix to **all** module versions, generating versions 
 | `append-snapshot` | Add -SNAPSHOT suffix to all versions if supported by adapter (e.g. `gradle`) | `false` |
 | `create-tags` | Create Git tags for bumped versions | `true` |
 | `generate-changelog` | Generate or update changelog files for changed modules | `true` |
+| `generate-release-notes` | Generate release notes summarizing all changes | `true` |
 | `push-changes` | Commit and push version changes and changelogs to remote | `true` |
 | `dry-run` | Run without writing or pushing | `false` |
+| `commit-release-notes` | Include generated release notes in the commit | `false` |
 | `adapter` | Language adapter (auto-detected if not provided) | `` |
 | `changelog-filename` | Filename for generated changelog | `CHANGELOG.md` |
 | `release-notes-filename` | Filename for generated release notes | `RELEASE.md` |
+| `strip-module-prefix` | Strip module name from tags when the project has a single module | `false` |
+| `tag-version-prefix` | Prefix to add on tag versions (e.g., `v`) | `` |
 
 ## Action Outputs
 
 | Output | Description |
 | ------- | ------------- |
 | `bumped` | Whether any module was bumped |
-| `changed-modules` | JSON array of changed modules |
-| `created-tags` | Comma-separated list of created tags |
-| `changelog-paths` | Comma-separated changelog file paths |
+| `changed-modules` | JSON array of `{ name, from, to }` |
+| `created-tags` | JSON array of `{ moduleId, tag }` of created tags |
+| `changelog-paths` | JSON array of `{ moduleId, path }` of generated changelog files |
+| `release-notes-paths` | JSON array of `{ moduleId, path }` of generated release notes files |
 
 ### Using Outputs
 
 ```yaml
 - name: Versu Semantic Evolution
   id: versu
-  uses: versuhq/versu@v0
+  uses: versuhq/versu@v3
   
 - name: Check if bumped
   if: steps.versu.outputs.bumped == 'true'
@@ -227,7 +232,7 @@ By default (`push-changes: true`), the action will:
 1. **Generate** version updates and changelogs
 2. **Commit** all changed files with message: `"chore: update versions and changelogs"`  
 3. **Push** changes to the remote repository
-4. **Create and push** version tags (if `push-tags: true`)
+4. **Create and push** version tags (if `create-tags: true`)
 
 ### Disabling Git Operations
 
@@ -235,11 +240,11 @@ For workflows where you want to handle git operations manually:
 
 ```yaml
 - name: Version modules (no git operations)
-  uses: versuhq/versu@v0
+  uses: versuhq/versu@v3
   with:
     adapter: gradle
     push-changes: false    # Disable automatic commit/push
-    push-tags: false       # Disable automatic tag pushing
+    create-tags: false     # Disable tag creation and push
 ```
 
 This is useful when:
@@ -324,9 +329,10 @@ You can provide configuration in any of the supported config files (e.g., `.vers
         "patch": "patch"
       },
       "prerelease": {
-        "major": "premajor",
-        "minor": "preminor",
-        "patch": "prepatch"
+        "premajor": "premajor",
+        "preminor": "preminor",
+        "prepatch": "prepatch",
+        "prerelease": "prerelease"
       }
     }
   },
@@ -377,9 +383,10 @@ versioning:
       minor: minor
       patch: patch
     prerelease:
-      major: premajor
-      minor: preminor
-      patch: prepatch
+      premajor: premajor
+      preminor: preminor
+      prepatch: prepatch
+      prerelease: prerelease
 
 changelog:
   root:
@@ -429,9 +436,10 @@ module.exports = {
         patch: 'patch'
       },
       prerelease: {
-        major: 'premajor',
-        minor: 'preminor',
-        patch: 'prepatch'
+        premajor: 'premajor',
+        preminor: 'preminor',
+        prepatch: 'prepatch',
+        prerelease: 'prerelease'
       }
     }
   },
@@ -491,9 +499,10 @@ module.exports = {
           "patch": "patch"
         },
         "prerelease": {
-          "major": "premajor",
-          "minor": "preminor",
-          "patch": "prepatch"
+          "premajor": "premajor",
+          "preminor": "preminor",
+          "prepatch": "prepatch",
+          "prerelease": "prerelease"
         }
       }
     },
@@ -525,9 +534,15 @@ All configuration files are validated using [Zod](https://github.com/colinhacks/
 
 Versu integrates with [conventional-changelog-writer](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-writer) for powerful changelog and release notes generation. All options from conventional-changelog-writer are supported through the `changelog` and `release` fields. For advanced customization requiring functions (like custom transforms, sorting logic, or templates), use JavaScript (or TypeScript) configuration files in your repository.
 
-## Gradle Project Support
+## Build System Support
 
-Gradle support is provided by the **[@versu/plugin-gradle][plugin-gradle]** package. For more details please refer to the [plugin documentation][plugin-gradle].
+Build system support is provided by adapter plugins:
+
+- **[@versu/plugin-gradle][plugin-gradle]** - Gradle (Groovy & Kotlin DSL)
+- **[@versu/plugin-maven][plugin-maven]** - Maven
+- **[@versu/plugin-node][plugin-node]** - Node.js (npm, yarn and pnpm workspaces)
+
+For more details please refer to each plugin documentation.
 
 ## Commit Message Format
 
@@ -599,28 +614,28 @@ jobs:
       - name: Release version
         if: github.ref == 'refs/heads/main'
         id: release
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           push-changes: true
-          push-tags: true
+          create-tags: true
       
       # Development pre-releases
       - name: Pre-release version
         if: github.ref == 'refs/heads/develop'
         id: prerelease
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           prerelease-mode: true
           prerelease-id: beta
           bump-unchanged: true
           push-changes: true
-          push-tags: false
+          create-tags: false
       
       # Feature branch CI versions
       - name: CI version
         if: startsWith(github.ref, 'refs/heads/feature/')
         id: ci
-        uses: versuhq/versu@v0
+        uses: versuhq/versu@v3
         with:
           prerelease-mode: true
           prerelease-id: alpha
@@ -628,7 +643,7 @@ jobs:
           add-build-metadata: true
           bump-unchanged: true
           push-changes: false
-          push-tags: false
+          create-tags: false
       
       - name: Report results
         env:
@@ -694,3 +709,5 @@ If auto-detection fails:
 MIT License - see [LICENSE](../../LICENSE) for details.
 
 [plugin-gradle]: https://github.com/versuhq/plugin-gradle
+[plugin-maven]: https://github.com/versuhq/plugin-maven
+[plugin-node]: https://github.com/versuhq/plugin-node

@@ -59,7 +59,7 @@ Versu automates the entire versioning lifecycle:
 
 ## 📦 Packages
 
-Versu provides four packages for different use cases. For more details, see the individual package READMEs.
+Versu provides three packages for different use cases. For more details, see the individual package READMEs.
 
 ### [@versu/core](packages/core)
 
