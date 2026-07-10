@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 -->
 
-![versu](docs/assets/images/versu_4.png)
+![versu](docs/assets/images/versu-hero.png)
 
 <!-- markdownlint-enable MD041 -->
 
