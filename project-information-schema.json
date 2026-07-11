@@ -32,9 +32,13 @@
         "type": {
           "enum": ["root", "module"],
           "description": "Type of the module (e.g., 'root', 'module')"
+        },
+        "declaredVersion": {
+          "type": "boolean",
+          "description": "Indicates if the version is explicitly declared in the module's configuration"
         }
       },
-      "required": ["name", "path", "affectedModules", "type"],
+      "required": ["name", "path", "affectedModules", "type", "declaredVersion"],
       "additionalProperties": true
     }
   },
