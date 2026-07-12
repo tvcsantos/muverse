@@ -26,7 +26,7 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # This is required to analyze commit history for version bumps
           fetch-depth: 0
@@ -82,7 +82,7 @@ jobs:
   prerelease-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # This is required to analyze commit history for version bumps
           fetch-depth: 0
@@ -115,7 +115,7 @@ jobs:
   ci-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # This is required to analyze commit history for version bumps
           fetch-depth: 0
@@ -154,7 +154,7 @@ jobs:
   gradle-snapshot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # This is required to analyze commit history for version bumps
           fetch-depth: 0
@@ -260,7 +260,7 @@ For git operations to work, ensure your workflow has:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v6
+  - uses: actions/checkout@v7
     with:
       # This is required to analyze commit history for version bumps
       fetch-depth: 0
@@ -595,7 +595,7 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # This is required to analyze commit history for version bumps
           fetch-depth: 0
@@ -673,7 +673,7 @@ If you get permission errors when pushing:
 2. Use a token with write permissions:
 
    ```yaml
-   - uses: actions/checkout@v6
+   - uses: actions/checkout@v7
      with:
        token: ${{ secrets.PAT_TOKEN }}  # Personal access token
    ```
