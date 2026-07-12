@@ -1,4 +1,4 @@
-name: Publish
+name: Publish (Manual)
 
 # Dispatched by the Release workflow after a bump
 on:
