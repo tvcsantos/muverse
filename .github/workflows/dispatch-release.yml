@@ -37,7 +37,7 @@ jobs:
 
       - name: Run Versu
         id: versu
-        uses: ./
+        uses: versuhq/versu@v3
         with:
           dry-run: ${{ inputs.dry-run }}
 
