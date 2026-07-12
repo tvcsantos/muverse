@@ -5,7 +5,6 @@
   "main": "dist/index.cjs",
   "private": true,
   "scripts": {
-    "prebuild": "node scripts/generate-version.mjs",
     "build": "npx rollup --config rollup.config.mjs && npm run copy-action-yml",
     "package": "npm run build",
     "test": "vitest",

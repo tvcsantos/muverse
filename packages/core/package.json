@@ -11,7 +11,6 @@
     }
   },
   "scripts": {
-    "prebuild": "node scripts/generate-version.js",
     "build": "tsc --project tsconfig.json --outDir dist",
     "test": "vitest",
     "test:coverage": "vitest --coverage",

@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Preview the release without writing or pushing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Full history for commit analysis
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Versu Node Plugin
+        run: npm i -g @versu/plugin-node
+
+      - name: Run Versu
+        id: versu
+        uses: ./
+        with:
+          dry-run: ${{ inputs.dry-run }}
+
+      # The repo-level vX.Y.Z / vN tags follow @versu/action, since they are
+      # what consumers of `uses: versuhq/versu@vN` resolve against.
+      - name: Update action repo tags
+        if: steps.versu.outputs.bumped == 'true' && !inputs.dry-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANGED_MODULES: ${{ steps.versu.outputs.changed-modules }}
+          NOTES_PATHS: ${{ steps.versu.outputs.release-notes-paths }}
+        run: |
+          module=$(echo "$CHANGED_MODULES" | jq -c '.[] | select(.name == "@versu/action")')
+          if [ -z "$module" ]; then
+            echo "@versu/action was not bumped - skipping repo tags"
+            exit 0
+          fi
+
+          version=$(echo "$module" | jq -r '.to')
+          module_id=$(echo "$module" | jq -r '.id')
+          notes=$(echo "$NOTES_PATHS" | jq -r --arg id "$module_id" '.[] | select(.moduleId == $id) | .path')
+
+          # Tag the release commit that Versu just pushed
+          git fetch origin main
+          git tag "v$version" origin/main
+          git push origin "v$version"
+
+          major="v${version%%.*}"
+          git tag -f "$major" origin/main
+          git push -f origin "$major"
+
+          if [ -n "$notes" ]; then
+            gh release create "v$version" --title "v$version" --notes-file "$notes"
+          else
+            gh release create "v$version" --title "v$version" --generate-notes
+          fi
+
+      - name: Create GitHub releases
+        if: steps.versu.outputs.bumped == 'true' && !inputs.dry-run
+        uses: actions/github-script@v9
+        env:
+          CREATED_TAGS: ${{ steps.versu.outputs.created-tags }}
+          NOTES_PATHS: ${{ steps.versu.outputs.release-notes-paths }}
+        with:
+          script: |
+            const fs = require("fs");
+
+            const createdTags = JSON.parse(process.env.CREATED_TAGS);
+            const notesPaths = JSON.parse(process.env.NOTES_PATHS);
+
+            for (const { moduleId, tag } of createdTags) {
+              // The action release lives on the repo-level vX.Y.Z tag instead
+              if (tag.startsWith("@versu/action@")) continue;
+
+              const notes = notesPaths.find((entry) => entry.moduleId === moduleId);
+
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                name: tag,
+                body: notes ? fs.readFileSync(notes.path, "utf8") : undefined,
+                // Fall back to GitHub's auto-generated notes if none were rendered
+                generate_release_notes: !notes,
+              });
+            }
+
+      # Tags pushed with GITHUB_TOKEN don't trigger tag workflows,
+      # so publishing is dispatched explicitly.
+      - name: Trigger publish
+        if: steps.versu.outputs.bumped == 'true' && !inputs.dry-run
+        uses: actions/github-script@v9
+        env:
+          CHANGED_MODULES: ${{ steps.versu.outputs.changed-modules }}
+        with:
+          script: |
+            const changedModules = JSON.parse(process.env.CHANGED_MODULES);
+
+            // Only these workspaces are published to npm
+            const publishable = ["@versu/core", "@versu/cli"];
+
+            const packages = changedModules
+              .map((module) => module.name)
+              .filter((name) => publishable.includes(name));
+
+            if (packages.length === 0) {
+              core.info("No publishable packages changed - skipping publish dispatch");
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "dispatch-publish.yml",
+              ref: "main",
+              inputs: { packages: packages.join(" ") },
+            });

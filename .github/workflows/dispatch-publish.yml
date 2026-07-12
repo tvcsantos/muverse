@@ -1,0 +1,52 @@
+name: Publish
+
+# Dispatched by the Release workflow after a bump
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Space-separated package names to publish (e.g. @versu/core @versu/cli)"
+        type: string
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all packages
+        run: npm run build
+
+      - name: Test all packages
+        run: npm test
+
+      - name: Configure npm auth
+        run: |
+          npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish workspaces
+        env:
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          for package in $PACKAGES; do
+            npm publish --workspace "$package" --access public
+          done
