@@ -32,6 +32,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Install Versu Node Plugin
         run: npm i -g @versu/plugin-node
 
