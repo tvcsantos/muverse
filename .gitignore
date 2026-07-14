@@ -39,4 +39,3 @@ oclif.manifest.json
 /packages/core/src/utils/version.ts
 
 dist/
-!packages/action/dist/

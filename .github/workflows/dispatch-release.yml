@@ -47,7 +47,8 @@ jobs:
           dry-run: ${{ inputs.dry-run }}
 
       # The repo-level vX.Y.Z / vN tags follow @versu/action, since they are
-      # what consumers of `uses: versuhq/versu@vN` resolve against.
+      # what consumers of `uses: versuhq/versu@vN` resolve against. dist/ is
+      # not tracked on main; it is built here and committed only on the tag.
       - name: Update action repo tags
         if: steps.versu.outputs.bumped == 'true' && !inputs.dry-run
         env:
@@ -65,13 +66,22 @@ jobs:
           module_id=$(echo "$module" | jq -r '.id')
           notes=$(echo "$NOTES_PATHS" | jq -r --arg id "$module_id" '.[] | select(.moduleId == $id) | .path')
 
-          # Tag the release commit that Versu just pushed
+          # Build the action bundle from the release commit that Versu just pushed
           git fetch origin main
-          git tag "v$version" origin/main
+          git checkout --force --detach origin/main
+          npm ci
+          npm run build
+
+          # dist/ is git-ignored, so the tag gets a detached commit (never
+          # pushed to main) carrying the freshly built bundle
+          git add -f packages/action/dist
+          git commit -m "chore: add @versu/action dist for v$version"
+
+          git tag "v$version"
           git push origin "v$version"
 
           major="v${version%%.*}"
-          git tag -f "$major" origin/main
+          git tag -f "$major"
           git push -f origin "$major"
 
           if [ -n "$notes" ]; then
