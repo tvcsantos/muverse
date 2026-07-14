@@ -48,7 +48,6 @@ var require$$3 = require('url');
 var require$$1$6 = require('module');
 var require$$6 = require('inspector');
 
-var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 function _interopNamespaceDefault(e) {
     var n = Object.create(null);
     if (e) {
@@ -265320,46 +265319,11 @@ class ConfigurationValidatorFactory {
     }
 }
 
-/**
- * Reads the nearest package.json above this module at runtime.
- *
- * @remarks
- * package.json ships with the published package, normally two levels above
- * this module (src/utils or dist/utils). A fixed relative path cannot be
- * used here because core also gets bundled into the GitHub Action's
- * dist/index.cjs, where walking upwards finds the action's own
- * package.json instead.
- */
-function readNearestPackageManifest() {
-    let directory = path$1.dirname(require$$3.fileURLToPath((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === 'SCRIPT' && _documentCurrentScript.src || new URL('index.cjs', document.baseURI).href))));
-    for (;;) {
-        const manifestPath = path$1.join(directory, "package.json");
-        if (require$$0.existsSync(manifestPath)) {
-            return JSON.parse(require$$0.readFileSync(manifestPath, "utf-8"));
-        }
-        const parent = path$1.dirname(directory);
-        if (parent === directory) {
-            throw new Error("Could not find a package.json to read the version from");
-        }
-        directory = parent;
-    }
-}
-function resolveAuthors(manifest) {
-    if (Array.isArray(manifest.authors)) {
-        return manifest.authors;
-    }
-    if (manifest.authors !== undefined) {
-        return manifest.authors.split(/[, ]/).filter(Boolean);
-    }
-    if (manifest.author) {
-        return [manifest.author];
-    }
-    return ["Unknown Author"];
-}
-const manifest$1 = readNearestPackageManifest();
-const VERSION$7 = manifest$1.version;
-const PACKAGE_NAME$1 = manifest$1.name;
-const AUTHORS = resolveAuthors(manifest$1);
+// This file is auto-generated. Do not edit manually.
+// Run 'npm run generate-version' to update this file.
+const VERSION$7 = "3.1.2";
+const PACKAGE_NAME$1 = "@versu/core";
+const AUTHORS = ["tvcsantos"];
 
 const info = `${PACKAGE_NAME$1} v${VERSION$7}`;
 const banner = `
@@ -272101,12 +272065,9 @@ function parseBooleanInput(input) {
     return input.toLowerCase() === "true";
 }
 
-// package.json ships with the action checkout, one level above this
-// module (src or dist), so reading it at runtime keeps the reported
-// version from drifting from the released one.
-const manifest = JSON.parse(require$$0.readFileSync(path$1.join(path$1.dirname(require$$3.fileURLToPath((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === 'SCRIPT' && _documentCurrentScript.src || new URL('index.cjs', document.baseURI).href)))), '../package.json'), 'utf-8'));
-const VERSION$6 = manifest.version;
-const PACKAGE_NAME = manifest.name;
+// This file is auto-generated. Do not edit manually.
+const VERSION$6 = "3.1.2";
+const PACKAGE_NAME = "@versu/action";
 
 class Context {
     /**

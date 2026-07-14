@@ -35,5 +35,8 @@ tmp/
 # oclif
 oclif.manifest.json
 
+/packages/action/src/utils/version.ts
+/packages/core/src/utils/version.ts
+
 dist/
 !packages/action/dist/

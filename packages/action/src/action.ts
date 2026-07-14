@@ -1,8 +1,8 @@
 import * as core from '@actions/core';
 import { VersuRunner, RunnerOptions, initLogger, logger } from '@versu/core';
-import { ActionsLogger } from './logger.js';
+import { ActionsLogger } from './utils/logger.js';
 import { parseBooleanInput } from './utils/actions.js';
-import { VERSION, PACKAGE_NAME } from './version.js';
+import { VERSION, PACKAGE_NAME } from './utils/version.js';
 import { githubContext } from './github/github-context.js';
 
 /**
