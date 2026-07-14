@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Next Version Placeholder -->
 
+## 2026-07-14
+
+### 🚀 Module Releases
+
+- [versu](./CHANGELOG.md) - [3.2.0](https://github.com/versuhq/versu/compare/versu@3.1.2...versu@3.2.0)
+- [@versu/action](packages/action/CHANGELOG.md) - [3.2.0](https://github.com/versuhq/versu/compare/@versu/action@3.1.2...@versu/action@3.2.0)
+- [@versu/cli](packages/cli/CHANGELOG.md) - [3.2.0](https://github.com/versuhq/versu/compare/@versu/cli@3.1.2...@versu/cli@3.2.0)
+- [@versu/core](packages/core/CHANGELOG.md) - [3.2.0](https://github.com/versuhq/versu/compare/@versu/core@3.1.2...@versu/core@3.2.0)
+
+## 📝 Other Changes
+
+#### ✨ Features
+
+- Ignore dist and commit it on tag release ([20f92d8](https://github.com/versuhq/versu/commit/20f92d8b576e31cc188d9ce316b9c3a68f70c392)) (action)
+
+#### 🔁 CI
+
+- Use static version file generated on prebuild ([5c412fd](https://github.com/versuhq/versu/commit/5c412fd374376e76e01f25342687e3690e9c08b8))
+
 ## 2026-07-12
 
 ### 🚀 Module Releases

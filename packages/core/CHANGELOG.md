@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Next Version Placeholder -->
 
+## [3.2.0](https://github.com/versuhq/versu/compare/@versu/core@3.1.2...@versu/core@3.2.0) - 2026-07-14
+
+### 🔁 CI
+
+- Use static version file generated on prebuild ([5c412fd](https://github.com/versuhq/versu/commit/5c412fd374376e76e01f25342687e3690e9c08b8))
+
 ## [3.1.2](https://github.com/versuhq/versu/compare/v3.1.1...@versu/core@3.1.2) - 2026-07-12
 
 ### 📝 Documentation
